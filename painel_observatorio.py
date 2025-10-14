@@ -1,103 +1,115 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import numpy as np
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
-# Usar o modo 'wide' para aproveitar melhor o espaço da tela
 st.set_page_config(
     page_title="Observatório da Violência Contra a Mulher - SC",
     page_icon="💜",
     layout="wide"
 )
 
-# --- FUNÇÕES PARA GERAR DADOS DE EXEMPLO ---
-# ATENÇÃO: Substitua o carregamento destes dados pelos seus arquivos reais.
-# Exemplo: df_geral = pd.read_csv('sua_base_1.csv')
+# --- FUNÇÕES PARA CARREGAR OS DADOS DOS ARQUIVOS EXCEL ---
+# ATENÇÃO: A mudança está aqui! Trocamos pd.read_csv por pd.read_excel
+
 @st.cache_data
 def carregar_dados_gerais():
     """
-    Cria um DataFrame de exemplo simulando a Base 1 (dados gerais).
+    Carrega e trata os dados da base geral a partir do arquivo Excel.
     """
-    municipios = [
-        "Florianópolis", "Joinville", "Blumenau", "São José", "Criciúma",
-        "Chapecó", "Itajaí", "Lages", "Jaraguá do Sul", "Palhoça"
-    ]
-    fatos = [
-        "Ameaça", "Lesão Corporal Dolosa", "Estupro", "Vias de fato",
-        "Injúria", "Difamação"
-    ]
-    
-    # Criando uma base de dados sintética
-    num_registros = 5000
-    np.random.seed(42)
-    datas = pd.to_datetime(pd.to_datetime('2020-01-01') + pd.to_timedelta(np.random.randint(0, 365*5, num_registros), 'd'))
-    
-    df = pd.DataFrame({
-        'data_fato': datas,
-        'municipio': np.random.choice(municipios, num_registros),
-        'fato_comunicado': np.random.choice(fatos, num_registros, p=[0.4, 0.2, 0.05, 0.15, 0.1, 0.1]),
-        'idade_vitima': np.random.randint(14, 75, num_registros)
-    })
-    df['ano'] = df['data_fato'].dt.year
-    df['mes'] = df['data_fato'].dt.month_name()
-    return df
+    try:
+        df = pd.read_excel('data/base_geral.xlsx') # Certifique-se que o nome do arquivo está correto
 
+        # Renomeia as colunas usando os nomes da imagem para os nomes padrão do código
+        df.rename(columns={
+            'Data do Fato': 'data_fato',
+            'Município': 'municipio',
+            'Mesoregião': 'mesoregiao',
+            'Fato Comunicado': 'fato_comunicado',
+            'Idade': 'idade_vitima'  # Renomeando 'Idade' para 'idade_vitima' para ser mais específico
+        }, inplace=True)
+
+        # --- Tratamento de Dados Essencial ---
+        # Agora usamos a nova coluna 'data_fato' que acabamos de renomear
+        df['data_fato'] = pd.to_datetime(df['data_fato'])
+        df['ano'] = df['data_fato'].dt.year
+        df['mes'] = df['data_fato'].dt.month_name()
+        
+        return df
+        
+    except FileNotFoundError:
+        st.error("Arquivo 'base_geral.xlsx' não encontrado na pasta 'data'. Verifique o nome do arquivo.")
+        return pd.DataFrame()
+    except KeyError as e:
+        st.error(f"Erro de Chave (KeyError): A coluna {e} não foi encontrada. "
+                 "Isso pode acontecer se o cabeçalho no arquivo Excel mudou. "
+                 "Verifique se as colunas 'Data do Fato', 'Município', etc., existem no arquivo.")
+        return pd.DataFrame()
+    
 @st.cache_data
 def carregar_dados_feminicidio():
     """
-    Cria um DataFrame de exemplo simulando a Base 2 (feminicídios).
+    Carrega e trata os dados da base de feminicídio a partir do arquivo Excel.
     """
-    relacao = [
-        "Companheiro(a)", "Ex-companheiro(a)", "Cônjuge", "Ex-cônjuge",
-        "Namorado(a)", "Pai/Mãe", "Outro Parente"
-    ]
-    meio = [
-        "Arma de Fogo", "Arma Branca", "Agressão Física",
-        "Asfixia/Esganadura", "Outro"
-    ]
-    
-    # Criando base sintética
-    num_registros = 250
-    np.random.seed(0)
-    datas = pd.to_datetime(pd.to_datetime('2020-01-01') + pd.to_timedelta(np.random.randint(0, 365*5, num_registros), 'd'))
-    
-    df = pd.DataFrame({
-        'data_fato': datas,
-        'relacao_autor': np.random.choice(relacao, num_registros),
-        'meio_crime': np.random.choice(meio, num_registros, p=[0.4, 0.3, 0.15, 0.1, 0.05]),
-        'idade_vitima': np.random.randint(18, 65, num_registros),
-        'idade_autor': np.random.randint(20, 70, num_registros),
-        'autor_preso': np.random.choice(["SIM", "NÃO", "SUICÍDIO"], num_registros, p=[0.7, 0.2, 0.1])
-    })
-    df['ano'] = df['data_fato'].dt.year
-    return df
+    try:
+        df = pd.read_excel('data/base_feminicidio.xlsx') # Certifique-se que o nome do arquivo está correto
+
+        # Renomeia as colunas usando os nomes da imagem para os nomes padrão do código
+        df.rename(columns={
+            'DATA': 'data_fato',
+            'MUNICÍPIO': 'municipio',
+            'RELAÇÃO COM O AUTOR': 'relacao_autor',
+            'IDADE AUTOR': 'idade_autor',
+            'PRISÃO': 'autor_preso',
+            'IDADE VITIMA': 'idade_vitima',
+            'MEIO': 'meio_crime'
+            # Adicione outras colunas que você for usar aqui, se necessário
+        }, inplace=True)
+
+        # --- Tratamento de Dados Essencial ---
+        df['data_fato'] = pd.to_datetime(df['data_fato'])
+        df['ano'] = df['data_fato'].dt.year
+        
+        return df
+
+    except FileNotFoundError:
+        st.error("Arquivo 'base_feminicidio.xlsx' não encontrado na pasta 'data'. Verifique o nome do arquivo.")
+        return pd.DataFrame()
+    except KeyError as e:
+        st.error(f"Erro de Chave (KeyError) no arquivo de feminicídio: A coluna {e} não foi encontrada. "
+                 "Verifique se o cabeçalho no arquivo Excel corresponde ao esperado.")
+        return pd.DataFrame()
 
 # Carregar os dados
 df_geral = carregar_dados_gerais()
 df_feminicidio = carregar_dados_feminicidio()
 
 
-# --- BARRA LATERAL (SIDEBAR) PARA FILTROS ---
+# --- BARRA LATERAL (SIDEBAR) E O RESTO DA APLICAÇÃO ---
+# O restante do seu código continua exatamente o mesmo.
 st.sidebar.image("https://i.imgur.com/805nJ3j.png", width=80)
 st.sidebar.title("Observatório da Violência Contra a Mulher")
-st.sidebar.header("Filtros")
 
-# Filtro de Ano
-anos_disponiveis = sorted(df_geral['ano'].unique())
-ano_selecionado = st.sidebar.multiselect(
-    "Selecione o Ano",
-    options=anos_disponiveis,
-    default=anos_disponiveis  # Por padrão, todos os anos são selecionados
-)
+# Verificação para evitar erros se os arquivos não forem carregados
+if not df_geral.empty and not df_feminicidio.empty:
+    st.sidebar.header("Filtros")
+    
+    # Filtro de Ano
+    anos_disponiveis = sorted(df_geral['ano'].unique())
+    ano_selecionado = st.sidebar.multiselect(
+        "Selecione o Ano",
+        options=anos_disponiveis,
+        default=anos_disponiveis
+    )
 
-# Filtro de Tipo de Crime
-fatos_disponiveis = sorted(df_geral['fato_comunicado'].unique())
-fato_selecionado = st.sidebar.multiselect(
-    "Selecione o Tipo de Crime",
-    options=fatos_disponiveis,
-    default=fatos_disponiveis
-)
+    # Filtro de Tipo de Crime
+    # Usar 'fato_comunicado' (o nome renomeado), e não 'Fato Comunicado'
+    fatos_disponiveis = sorted(df_geral['fato_comunicado'].unique()) 
+    fato_selecionado = st.sidebar.multiselect(
+        "Selecione o Tipo de Crime",
+        options=fatos_disponiveis,
+        default=fatos_disponiveis
+    )
 
 # Aplicar filtros aos dataframes
 df_geral_filtrado = df_geral[
