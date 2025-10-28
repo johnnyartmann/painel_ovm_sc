@@ -124,10 +124,33 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
     st.sidebar.header("Filtros")
     anos_disponiveis = sorted(df_geral['ano'].unique())
     ano_selecionado = st.sidebar.multiselect("Selecione o Ano", options=anos_disponiveis, default=anos_disponiveis)
+    
+    meses_disponiveis = sorted(df_geral['mes'].unique(), key=lambda m: list(pd.to_datetime(df_geral['data_fato']).dt.month).index(list(df_geral[df_geral['mes'] == m]['data_fato'])[0].month))
+    mes_selecionado = st.sidebar.multiselect("Selecione o Mês", options=meses_disponiveis, default=meses_disponiveis)
+    
+    municipios_disponiveis = sorted(df_geral['municipio'].unique())
+    municipio_selecionado = st.sidebar.multiselect("Selecione o Município", options=municipios_disponiveis, default=municipios_disponiveis)
+
+    mesoregioes_disponiveis = sorted(df_geral['mesoregiao'].unique())
+    mesoregiao_selecionado = st.sidebar.multiselect("Selecione a Mesoregião", options=mesoregioes_disponiveis, default=mesoregioes_disponiveis)
+    
+    idades_disponiveis = sorted(df_geral['idade_vitima'].dropna().unique())
+    idade_selecionada = st.sidebar.slider("Selecione a Faixa Etária", 
+                                          min_value=int(idades_disponiveis[0]), 
+                                          max_value=int(idades_disponiveis[-1]), 
+                                          value=(int(idades_disponiveis[0]), int(idades_disponiveis[-1])))
+
     fatos_disponiveis = sorted(df_geral['fato_comunicado'].unique())
     fato_selecionado = st.sidebar.multiselect("Selecione o Tipo de Crime", options=fatos_disponiveis, default=fatos_disponiveis)
 
-    df_geral_filtrado = df_geral[(df_geral['ano'].isin(ano_selecionado)) & (df_geral['fato_comunicado'].isin(fato_selecionado))]
+    df_geral_filtrado = df_geral[
+        (df_geral['ano'].isin(ano_selecionado)) & 
+        (df_geral['fato_comunicado'].isin(fato_selecionado)) &
+        (df_geral['mes'].isin(mes_selecionado)) &
+        (df_geral['municipio'].isin(municipio_selecionado)) &
+        (df_geral['mesoregiao'].isin(mesoregiao_selecionado)) &
+        (df_geral['idade_vitima'] >= idade_selecionada[0]) & (df_geral['idade_vitima'] <= idade_selecionada[1])
+    ]
     df_feminicidio_filtrado = df_feminicidio[df_feminicidio['ano'].isin(ano_selecionado)]
 
     # --- ABA 1: ANÁLISE GERAL ---
@@ -226,6 +249,23 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
             )
             fig_mes.update_traces(textinfo='percent+label', textposition='outside')
             st.plotly_chart(fig_mes, use_container_width=True)
+        
+        st.markdown("---")
+
+        st.subheader("Distribuição de Ocorrências por Dia da Semana")
+        df_geral_filtrado['dia_semana'] = df_geral_filtrado['data_fato'].dt.day_name()
+        dias_ordem = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        df_geral_filtrado['dia_semana_cat'] = pd.Categorical(df_geral_filtrado['dia_semana'], categories=dias_ordem, ordered=True)
+        registros_por_dia = df_geral_filtrado['dia_semana_cat'].value_counts().sort_index()
+        nomes_dias_pt = {'Monday': 'Segunda-feira', 'Tuesday': 'Terça-feira', 'Wednesday': 'Quarta-feira', 'Thursday': 'Quinta-feira', 'Friday': 'Sexta-feira', 'Saturday': 'Sábado', 'Sunday': 'Domingo'}
+        registros_por_dia.index = registros_por_dia.index.map(nomes_dias_pt)
+        fig_dia_semana = px.bar(
+            registros_por_dia, x=registros_por_dia.index, y=registros_por_dia.values,
+            labels={'x': 'Dia da Semana', 'y': 'Quantidade'}, template='plotly_white', text=registros_por_dia.values
+        )
+        fig_dia_semana.update_traces(marker_color='#8A2BE2', textposition='outside')
+        st.plotly_chart(fig_dia_semana, use_container_width=True)
+
 
     # --- ABA 2: ANÁLISE DE FEMINICÍDIOS ---
     with tab_feminicidio:
