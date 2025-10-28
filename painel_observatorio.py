@@ -473,8 +473,8 @@ st.sidebar.image("https://i.imgur.com/805nJ3j.png", width=80)
 st.sidebar.title("Observatório da Violência Contra a Mulher")
 
 # --- ESTRUTURA COM ABAS (TABS) ---
-tab_geral, tab_feminicidio, tab_glossario = st.tabs([
-    "📊 Análise Geral da Violência", "🚨 Análise de Feminicídios", "📖 Metodologia e Glossário"
+tab_geral, tab_feminicidio, tab_glossario, tab_download = st.tabs([
+    "📊 Análise Geral da Violência", "🚨 Análise de Feminicídios", "📖 Metodologia e Glossário", "📥 Download de Dados"
 ])
 
 # --- LÓGICA PRINCIPAL DA APLICAÇÃO ---
@@ -841,4 +841,46 @@ st.markdown("""
     Observatório da Violência Contra a Mulher - SC | 2025
 </div>
 """, unsafe_allow_html=True)
+
+# --- ABA 4: DOWNLOAD DE DADOS ---
+with tab_download:
+    st.header("Download das Fontes de Dados")
+    st.markdown("Faça o download dos arquivos de dados utilizados neste painel.")
+
+    st.markdown("---")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.subheader("Base Geral de Crimes")
+        st.markdown("Contém todos os registros de violência contra a mulher, exceto feminicídios.")
+        with open("data/base_geral.xlsx", "rb") as fp:
+            st.download_button(
+                label="Download (XLSX)",
+                data=fp,
+                file_name="base_geral.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+
+    with col2:
+        st.subheader("Base de Feminicídios")
+        st.markdown("Contém os registros de feminicídios consumados.")
+        with open("data/base_feminicidio.xlsx", "rb") as fp:
+            st.download_button(
+                label="Download (XLSX)",
+                data=fp,
+                file_name="base_feminicidio.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+
+    with col3:
+        st.subheader("Mapa de Municípios (GeoJSON)")
+        st.markdown("Arquivo com as geometrias dos municípios de Santa Catarina.")
+        with open("data/municipios_sc.json", "rb") as fp:
+            st.download_button(
+                label="Download (JSON)",
+                data=fp,
+                file_name="municipios_sc.json",
+                mime="application/json"
+            )
 
