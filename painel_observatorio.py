@@ -838,6 +838,7 @@ with tab_glossario:
 # Rodapé
 st.markdown("""
 <div class='footer'>
-    💜 Observatório da Violência Contra a Mulher - SC | Parceria OVM/SC e MPC/SC | 2025
+    Observatório da Violência Contra a Mulher - SC | 2025
 </div>
 """, unsafe_allow_html=True)
+
