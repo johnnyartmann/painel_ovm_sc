@@ -437,6 +437,23 @@ def carregar_dados_feminicidio():
         st.write("Colunas encontradas após limpeza:", df.columns.tolist())
         return pd.DataFrame()
 
+# --- FUNÇÕES DE ESTILIZAÇÃO PARA A TABELA ---
+def colorir_percentual(val):
+    """Retorna a cor para o valor percentual."""
+    if pd.isna(val) or val == 0:
+        return ''
+    color = 'red' if val > 0 else 'green'
+    return f'color: {color}'
+
+def formatar_seta_percentual(val):
+    """Formata o valor com seta e percentual."""
+    if pd.isna(val):
+        return '-'
+    seta = '▲' if val > 0 else '▼' if val < 0 else ''
+    if seta:
+        return f'{seta} {abs(val):.2f}%'
+    return f'{abs(val):.2f}%'
+
 # --- FUNÇÃO PARA CRIAR A TABELA CONSOLIDADA ---
 def criar_tabela_consolidada(df):
     """Cria uma tabela consolidada com dados de crimes por município."""
@@ -450,14 +467,25 @@ def criar_tabela_consolidada(df):
         for i in range(1, len(anos)):
             ano_atual = anos[i]
             ano_anterior = anos[i-1]
-            df_pivot[f'evolucao_percentual_{ano_anterior}-{ano_atual}'] = (
+            coluna_evolucao = f'Diferença {ano_anterior}-{ano_atual}'
+            df_pivot[coluna_evolucao] = (
                 (df_pivot[ano_atual] - df_pivot[ano_anterior]) / df_pivot[ano_anterior].replace(0, pd.NA) * 100
-            ).fillna(0)
+            )
 
-    colunas_anos = sorted([col for col in df_pivot.columns if isinstance(col, int)])
-    colunas_evolucao = sorted([col for col in df_pivot.columns if 'evolucao' in str(col)])
+    anos_int = sorted([col for col in df_pivot.columns if isinstance(col, int)])
     
-    ordem_colunas = colunas_anos + colunas_evolucao + ['total']
+    ordem_colunas = []
+    if anos_int:
+        ordem_colunas.append(anos_int[0])
+        for i in range(1, len(anos_int)):
+            ano_anterior = anos_int[i-1]
+            ano_atual = anos_int[i]
+            ordem_colunas.append(ano_atual)
+            coluna_evolucao = f'Diferença {ano_anterior}-{ano_atual}'
+            if coluna_evolucao in df_pivot.columns:
+                ordem_colunas.append(coluna_evolucao)
+    
+    ordem_colunas.append('total')
     df_consolidado = df_pivot[ordem_colunas].reset_index()
     df_consolidado.rename(columns={'municipio': 'Nome do Município', 'fato_comunicado': 'Fato Comunicado'}, inplace=True)
     
@@ -707,7 +735,21 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
         if not df_geral_filtrado.empty:
             tabela_consolidada = criar_tabela_consolidada(df_geral_filtrado)
             if not tabela_consolidada.empty:
-                st.dataframe(tabela_consolidada, use_container_width=True)
+                colunas_evolucao = [col for col in tabela_consolidada.columns if 'Diferença' in str(col)]
+
+                format_dict = {col: formatar_seta_percentual for col in colunas_evolucao}
+                
+                anos_int = [col for col in tabela_consolidada.columns if isinstance(col, int)]
+                for ano in anos_int:
+                    format_dict[ano] = '{:.0f}'
+                format_dict['total'] = '{:.0f}'
+
+                styler = tabela_consolidada.style.applymap(
+                    colorir_percentual,
+                    subset=colunas_evolucao
+                ).format(format_dict)
+                
+                st.dataframe(styler, use_container_width=True)
             else:
                 st.warning("Não há dados para exibir na tabela consolidada com os filtros selecionados.")
         else:
@@ -883,4 +925,3 @@ with tab_download:
                 file_name="municipios_sc.json",
                 mime="application/json"
             )
-
