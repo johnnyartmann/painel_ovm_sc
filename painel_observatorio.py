@@ -342,8 +342,44 @@ st.markdown("""
             font-size: 1.4rem;
         }
         
+        h3 {
+            font-size: 1.2rem;
+        }
+
         [data-testid="stMetricValue"] {
             font-size: 1.8rem;
+        }
+
+        [data-testid="stMetric"] {
+            padding: 1rem;
+        }
+
+        /* Faz as colunas empilharem */
+        [data-testid="stHorizontalBlock"] {
+            flex-direction: column;
+        }
+
+        /* Ajusta o espaçamento das abas */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 4px;
+            padding: 0.3rem;
+        }
+
+        .stTabs [data-baseweb="tab"] {
+            padding: 0 1rem;
+            height: 40px;
+            font-size: 0.9rem;
+        }
+
+        /* Reduz o padding dos gráficos */
+        .js-plotly-plot {
+            padding: 0.5rem;
+        }
+
+        /* Rodapé fixo pode atrapalhar em telas menores */
+        .footer {
+            position: relative;
+            padding: 1rem;
         }
     }
 </style>
