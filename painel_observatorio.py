@@ -638,7 +638,6 @@ df_feminicidio = carregar_dados_feminicidio()
 
 # --- BARRA LATERAL (SIDEBAR) ---
 st.sidebar.image("logo_ovm.jpeg", use_column_width=True)
-st.sidebar.title("Observatório da Violência Contra a Mulher")
 
 # --- ESTRUTURA COM ABAS (TABS) ---
 tab_geral, tab_feminicidio, tab_glossario, tab_download = st.tabs([
@@ -647,10 +646,10 @@ tab_geral, tab_feminicidio, tab_glossario, tab_download = st.tabs([
 
 # --- LÓGICA PRINCIPAL DA APLICAÇÃO ---
 if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
-    st.sidebar.header("⚙️ Filtros de Análise")
-    
-    # Criar abas de filtros para melhor organização
-    with st.sidebar.expander("📅 PERÍODO", expanded=True):
+    with st.sidebar:
+        st.header("⚙️ Filtros de Análise")
+        
+        st.subheader("📅 PERÍODO")
         min_date = df_geral['data_fato'].min().date()
         max_date = df_geral['data_fato'].max().date()
 
@@ -669,9 +668,8 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
             max_value=max_date,
             help="Selecione a data de fim do período."
         )
-    
-    with st.sidebar.expander("📍 LOCALIZAÇÃO", expanded=True):
-        # Filtro por Mesoregião primeiro (mais agregado)
+        
+        st.subheader("📍 LOCALIZAÇÃO")
         mesoregioes_disponiveis = sorted(df_geral['mesoregiao'].unique())
         mesoregiao_selecionado = st.multiselect(
             "Mesorregião(ões)", 
@@ -688,7 +686,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
             help="Filtre por associação de municípios"
         )
         
-        # Filtrar municípios baseado nas mesoregiões selecionadas
         if mesoregiao_selecionado:
             municipios_filtrados = df_geral[df_geral['mesoregiao'].isin(mesoregiao_selecionado)]['municipio'].unique()
         else:
@@ -696,7 +693,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
         
         municipios_disponiveis = sorted(municipios_filtrados)
         
-        # Opção de selecionar todos os municípios
         todos_municipios = st.checkbox("Todos os municípios", value=True, help="Marque para selecionar todos")
         
         if todos_municipios:
@@ -711,8 +707,8 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
             )
             if not municipio_selecionado:
                 municipio_selecionado = municipios_disponiveis
-    
-    with st.sidebar.expander("👥 PERFIL DA VÍTIMA", expanded=True):
+        
+        st.subheader("👥 PERFIL DA VÍTIMA")
         idades_disponiveis = sorted(df_geral['idade_vitima'].dropna().unique())
         idade_selecionada = st.slider(
             "Faixa Etária", 
@@ -722,8 +718,8 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
             help="Ajuste o intervalo de idade das vítimas"
         )
         st.caption(f"Idades: {idade_selecionada[0]} a {idade_selecionada[1]} anos")
-    
-    with st.sidebar.expander("🚨 TIPO DE CRIME", expanded=True):
+        
+        st.subheader("🚨 TIPO DE CRIME")
         fatos_disponiveis = sorted(df_geral['fato_comunicado'].unique())
         
         todos_crimes = st.checkbox("Todos os tipos", value=True, help="Marque para incluir todos os crimes")
@@ -740,8 +736,8 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
             )
             if not fato_selecionado:
                 fato_selecionado = fatos_disponiveis
-    
-    with st.sidebar.expander("📊 AGRUPAMENTO DE DADOS", expanded=True):
+        
+        st.subheader("📊 AGRUPAMENTO DE DADOS")
         agrupamento_selecionado = st.selectbox(
             "Agrupar por",
             options=["Consolidado", "Município", "Mesorregião", "Associação"],
@@ -783,12 +779,21 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
         media_idade_vitima = 0.0
         if not df_geral_filtrado.empty and df_geral_filtrado['idade_vitima'].notna().any():
             media_idade_vitima = df_geral_filtrado['idade_vitima'].mean()
+
+        # Calcular o número de dias no período selecionado
+        num_dias = (data_final - data_inicial).days + 1
+        
+        # Calcular KPIs de crimes por dia e por hora
+        crimes_por_dia = total_registros / num_dias if num_dias > 0 else 0
+        crimes_por_hora = total_registros / (num_dias * 24) if num_dias > 0 else 0
         
         col1, col2 = st.columns(2)
         with col1:
-            st.metric(label="Total de Registros de Crime", value=f"{total_registros:,}".replace(",", "."))
+            st.metric(label="Total de Registros", value=f"{total_registros:,}".replace(",", "."))
+            st.metric(label="Média de Crimes por Dia", value=f"{crimes_por_dia:.1f}")
         with col2:
             st.metric(label="Idade Média da Vítima", value=f"{media_idade_vitima:.1f} anos")
+            st.metric(label="Média de Crimes por Hora", value=f"{crimes_por_hora:.2f}")
         st.markdown("---")
         
         st.subheader(f"Distribuição de Crimes por {agrupamento_selecionado}")
