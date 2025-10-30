@@ -36,6 +36,11 @@ st.markdown("""
     [data-testid="stSidebar"] * {
         color: white !important;
     }
+
+    /* Corrigir a cor da fonte nos campos de data */
+    [data-testid="stSidebar"] [data-baseweb="base-input"] input {
+        color: black !important;
+    }
     
     [data-testid="stSidebar"] .stSelectbox label,
     [data-testid="stSidebar"] .stMultiSelect label,
