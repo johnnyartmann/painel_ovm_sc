@@ -19,7 +19,7 @@ st.markdown("""
     
     /* Configurações globais */
     * {
-        font-family: 'Inter', sans-serif;
+        font_family: 'Inter', sans-serif;
     }
     
     /* Fundo principal */
@@ -615,6 +615,98 @@ def criar_tabela_total_consolidada(df):
     df_consolidado.rename(columns={'fato_comunicado': 'Fato Comunicado'}, inplace=True)
     
     return df_consolidado
+
+# --- NOVAS FUNÇÕES PARA TABELA DE FEMINICÍDIO ---
+def criar_tabela_feminicidio_agrupado(df, coluna_agrupamento, nome_agrupamento):
+    """Cria uma tabela consolidada com dados de feminicídios por [agrupamento]."""
+    df_agrupado = df.groupby([coluna_agrupamento, 'ano']).size().reset_index(name='total_crime')
+    df_pivot = df_agrupado.pivot_table(index=coluna_agrupamento, columns='ano', values='total_crime', fill_value=0)
+    
+    anos_existentes = [col for col in df_pivot.columns if isinstance(col, (int, float))]
+    if anos_existentes:
+        anos_todos = range(int(min(anos_existentes)), int(max(anos_existentes)) + 1)
+        for ano in anos_todos:
+            if ano not in df_pivot.columns:
+                df_pivot[ano] = 0
+
+    df_pivot = df_pivot.reindex(sorted(df_pivot.columns), axis=1)
+    df_pivot['total'] = df_pivot.sum(axis=1)
+    
+    anos = sorted([col for col in df_pivot.columns if isinstance(col, (int, float))])
+
+    if len(anos) > 1:
+        for i in range(1, len(anos)):
+            ano_atual = anos[i]
+            ano_anterior = anos[i-1]
+            coluna_evolucao = f'Diferença {ano_anterior}-{ano_atual}'
+            denominador = df_pivot[ano_anterior].replace(0, pd.NA)
+            df_pivot[coluna_evolucao] = (df_pivot[ano_atual] - df_pivot[ano_anterior]) / denominador * 100
+
+    anos_int = sorted([col for col in df_pivot.columns if isinstance(col, int)])
+    
+    ordem_colunas = []
+    if anos_int:
+        ordem_colunas.append(anos_int[0])
+        for i in range(1, len(anos_int)):
+            ano_anterior = anos_int[i-1]
+            ano_atual = anos_int[i]
+            ordem_colunas.append(ano_atual)
+            coluna_evolucao = f'Diferença {ano_anterior}-{ano_atual}'
+            if coluna_evolucao in df_pivot.columns:
+                ordem_colunas.append(coluna_evolucao)
+    
+    ordem_colunas.append('total')
+    df_consolidado = df_pivot[ordem_colunas].reset_index()
+    nome_coluna = f"Nome do {nome_agrupamento}" if nome_agrupamento == "Município" else nome_agrupamento
+    df_consolidado.rename(columns={coluna_agrupamento: nome_coluna}, inplace=True)
+    
+    return df_consolidado
+
+def criar_tabela_total_feminicidio(df):
+    """Cria uma tabela consolidada com o total de feminicídios por ano."""
+    if df.empty:
+        return pd.DataFrame(columns=['Tipo de Crime', 'total'])
+        
+    df_agrupado = df.groupby('ano').size().reset_index(name='total_crime')
+    df_pivot = df_agrupado.pivot_table(columns='ano', values='total_crime', fill_value=0)
+    
+    anos_existentes = [col for col in df.ano.unique() if isinstance(col, (int, float))]
+    if anos_existentes:
+        anos_todos = range(int(min(anos_existentes)), int(max(anos_existentes)) + 1)
+        for ano in anos_todos:
+            if ano not in df_pivot.columns:
+                df_pivot[ano] = 0
+    df_pivot = df_pivot.reindex(sorted(df_pivot.columns), axis=1)
+
+    df_pivot['total'] = df_pivot.sum(axis=1)
+    
+    anos = sorted([col for col in df_pivot.columns if isinstance(col, (int, float))])
+
+    if len(anos) > 1:
+        for i in range(1, len(anos)):
+            ano_atual = anos[i]
+            ano_anterior = anos[i-1]
+            coluna_evolucao = f'Diferença {ano_anterior}-{ano_atual}'
+            denominador = df_pivot[ano_anterior].replace(0, pd.NA)
+            df_pivot[coluna_evolucao] = (df_pivot[ano_atual] - df_pivot[ano_anterior]) / denominador * 100
+
+    anos_int = sorted([col for col in df_pivot.columns if isinstance(col, int)])
+    ordem_colunas = []
+    if anos_int:
+        ordem_colunas.append(anos_int[0])
+        for i in range(1, len(anos_int)):
+            ano_anterior = anos_int[i-1]
+            ano_atual = anos_int[i]
+            ordem_colunas.append(ano_atual)
+            coluna_evolucao = f'Diferença {ano_anterior}-{ano_atual}'
+            if coluna_evolucao in df_pivot.columns:
+                ordem_colunas.append(coluna_evolucao)
+    
+    ordem_colunas.append('total')
+    df_consolidado = df_pivot[ordem_colunas].reset_index(drop=True)
+    df_consolidado.insert(0, 'Tipo de Crime', 'Feminicídio')
+    
+    return df_consolidado
     
 @st.cache_data
 def carregar_dados_regioes():
@@ -1186,6 +1278,46 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
             st.metric(label="Idade Média do Autor", value=texto_idade_autor)
         
         st.markdown("---")
+
+        st.subheader(f"Distribuição de Feminicídios por {agrupamento_selecionado}")
+
+        # Adaptar a lógica do mapa para feminicídios
+        if agrupamento_selecionado == "Município" or agrupamento_selecionado == "Consolidado":
+            map_df_fem = df_feminicidio_filtrado['municipio_normalizado'].value_counts().reset_index()
+            map_df_fem.columns = ['municipio_normalizado', 'quantidade']
+        else: # Mesorregião or Associação
+            agrupamento_col_fem = "mesoregiao" if agrupamento_selecionado == "Mesorregião" else "associacao"
+            
+            # Calcular totais de feminicídios por grupo
+            feminicidios_por_grupo = df_feminicidio_filtrado.groupby(agrupamento_col_fem).size().reset_index(name='quantidade_grupo')
+            
+            # Mapeamento de municípios para o grupo
+            municipio_grupo_mapping_fem = df_feminicidio_filtrado[['municipio_normalizado', agrupamento_col_fem]].drop_duplicates()
+            
+            # Mesclar os totais do grupo de volta para os municípios
+            map_df_fem = pd.merge(municipio_grupo_mapping_fem, feminicidios_por_grupo, on=agrupamento_col_fem)
+            map_df_fem = map_df_fem.rename(columns={'quantidade_grupo': 'quantidade'})
+
+        fig_mapa_fem = px.choropleth_mapbox(
+            map_df_fem, 
+            geojson=geojson_sc, 
+            locations='municipio_normalizado',
+            featureidkey="properties.NM_MUN_NORMALIZADO", 
+            color='quantidade',
+            color_continuous_scale="Reds", # Usar uma escala de cor diferente para distinguir
+            mapbox_style="carto-positron",
+            zoom=6, 
+            center={"lat": -27.59, "lon": -50.52}, 
+            opacity=0.7,
+            labels={'quantidade': f'Total de Feminicídios ({agrupamento_selecionado})'}
+        )
+        fig_mapa_fem.update_layout(
+            margin={"r":0,"t":0,"l":0,"b":0},
+            coloraxis_showscale=False
+        )
+        st.plotly_chart(fig_mapa_fem, use_container_width=True)
+
+        st.markdown("---")
         
         col_graf_fem1, col_graf_fem2 = st.columns(2)
         with col_graf_fem1:
@@ -1557,6 +1689,60 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
                 fig_ano_fem.update_traces(marker_color='#6a1b9a')
             fig_ano_fem.update_traces(textposition='outside')
         st.plotly_chart(fig_ano_fem, use_container_width=True)
+
+        st.markdown("---")
+
+        if agrupamento_selecionado != "Consolidado":
+            mapa_agrupamento_tabela = {
+                "Município": "municipio",
+                "Mesorregião": "mesoregiao",
+                "Associação": "associacao"
+            }
+            coluna_agrupamento_tabela = mapa_agrupamento_tabela[agrupamento_selecionado]
+            
+            st.subheader(f"Tabela Consolidada de Feminicídios por {agrupamento_selecionado}")
+            if not df_feminicidio_filtrado.empty:
+                tabela_feminicidio = criar_tabela_feminicidio_agrupado(df_feminicidio_filtrado, coluna_agrupamento_tabela, agrupamento_selecionado)
+                if not tabela_feminicidio.empty:
+                    colunas_evolucao = [col for col in tabela_feminicidio.columns if 'Diferença' in str(col)]
+                    format_dict = {col: formatar_seta_percentual for col in colunas_evolucao}
+                    anos_int = [col for col in tabela_feminicidio.columns if isinstance(col, int)]
+                    for ano in anos_int:
+                        format_dict[ano] = '{:.0f}'
+                    format_dict['total'] = '{:.0f}'
+
+                    styler = tabela_feminicidio.style.applymap(
+                        colorir_percentual,
+                        subset=colunas_evolucao
+                    ).format(format_dict)
+                    
+                    st.dataframe(styler, use_container_width=True)
+                else:
+                    st.warning("Não há dados para exibir na tabela de feminicídios com os filtros selecionados.")
+            else:
+                st.warning("Não há dados para exibir na tabela de feminicídios com os filtros selecionados.")
+        else:
+            st.subheader("Tabela Consolidada de Feminicídios (Total SC)")
+            if not df_feminicidio_filtrado.empty:
+                tabela_total_fem = criar_tabela_total_feminicidio(df_feminicidio_filtrado)
+                if not tabela_total_fem.empty:
+                    colunas_evolucao = [col for col in tabela_total_fem.columns if 'Diferença' in str(col)]
+                    format_dict = {col: formatar_seta_percentual for col in colunas_evolucao}
+                    anos_int = [col for col in tabela_total_fem.columns if isinstance(col, int)]
+                    for ano in anos_int:
+                        format_dict[ano] = '{:.0f}'
+                    format_dict['total'] = '{:.0f}'
+
+                    styler = tabela_total_fem.style.applymap(
+                        colorir_percentual,
+                        subset=colunas_evolucao
+                    ).format(format_dict)
+                    
+                    st.dataframe(styler, use_container_width=True)
+                else:
+                    st.warning("Não há dados para exibir na tabela de feminicídios com os filtros selecionados.")
+            else:
+                st.warning("Não há dados para exibir na tabela de feminicídios com os filtros selecionados.")
 
 else:
     with tab_geral:
