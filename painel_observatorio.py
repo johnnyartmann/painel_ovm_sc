@@ -589,7 +589,7 @@ df_geral = carregar_dados_gerais()
 df_feminicidio = carregar_dados_feminicidio()
 
 # --- BARRA LATERAL (SIDEBAR) ---
-st.sidebar.image("https://i.imgur.com/805nJ3j.png", width=80)
+st.sidebar.image("logo_ovm.jpeg", use_column_width=True)
 st.sidebar.title("Observatório da Violência Contra a Mulher")
 
 # --- ESTRUTURA COM ABAS (TABS) ---
