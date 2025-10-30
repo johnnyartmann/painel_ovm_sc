@@ -805,10 +805,9 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
             map_df.columns = ['municipio_normalizado', 'quantidade']
 
         elif agrupamento_selecionado == "Consolidado":
-            # Assign the total sum to all municipalities in the filtered dataset
-            total_crimes = df_geral_filtrado.shape[0]
-            map_df = df_geral_filtrado[['municipio_normalizado']].drop_duplicates()
-            map_df['quantidade'] = total_crimes
+            # Use the simple count per municipality
+            map_df = df_geral_filtrado['municipio_normalizado'].value_counts().reset_index()
+            map_df.columns = ['municipio_normalizado', 'quantidade']
 
         else: # Mesorregião or Associação
             agrupamento_col = "mesoregiao" if agrupamento_selecionado == "Mesorregião" else "associacao"
@@ -837,7 +836,10 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
             opacity=0.7,
             labels={'quantidade': f'Total de Registros ({agrupamento_selecionado})'}
         )
-        fig_mapa.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
+        fig_mapa.update_layout(
+            margin={"r":0,"t":0,"l":0,"b":0},
+            coloraxis_showscale=False
+        )
         st.plotly_chart(fig_mapa, use_container_width=True)
 
         st.markdown("---")
