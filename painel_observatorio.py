@@ -637,7 +637,7 @@ df_geral = carregar_dados_gerais()
 df_feminicidio = carregar_dados_feminicidio()
 
 # --- BARRA LATERAL (SIDEBAR) ---
-st.sidebar.image("logo_ovm.jpeg", use_column_width=True)
+st.sidebar.image("logo_ovm.jpeg", use_container_width=True)
 
 # --- ESTRUTURA COM ABAS (TABS) ---
 tab_geral, tab_feminicidio, tab_glossario, tab_download = st.tabs([
@@ -850,29 +850,44 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
         )
         df_temporal = df_geral_filtrado.copy()
         df_temporal['ano_mes'] = df_temporal['data_fato'].dt.to_period('M').astype(str)
-        registros_por_mes_ano = df_temporal.groupby('ano_mes').size().reset_index(name='quantidade').sort_values('ano_mes')
+        
+        color_param_temporal = None
+        if agrupamento_selecionado == "Consolidado":
+            registros_por_mes_ano = df_temporal.groupby('ano_mes').size().reset_index(name='quantidade').sort_values('ano_mes')
+        else:
+            mapa_agrupamento_tabela = {
+                "Município": "municipio",
+                "Mesorregião": "mesoregiao",
+                "Associação": "associacao"
+            }
+            coluna_agrupamento = mapa_agrupamento_tabela[agrupamento_selecionado]
+            registros_por_mes_ano = df_temporal.groupby(['ano_mes', coluna_agrupamento]).size().reset_index(name='quantidade').sort_values('ano_mes')
+            color_param_temporal = coluna_agrupamento
 
         if chart_type_temporal == "Barras":
             fig_temporal = px.bar(
-                registros_por_mes_ano, x='ano_mes', y='quantidade',
+                registros_por_mes_ano, x='ano_mes', y='quantidade', color=color_param_temporal,
                 labels={'ano_mes': 'Mês/Ano', 'quantidade': 'Quantidade de Registros'},
                 template='plotly_white'
             )
-            fig_temporal.update_traces(marker_color='#8A2BE2')
+            if agrupamento_selecionado == "Consolidado":
+                fig_temporal.update_traces(marker_color='#8A2BE2')
         elif chart_type_temporal == "Área":
             fig_temporal = px.area(
-                registros_por_mes_ano, x='ano_mes', y='quantidade',
+                registros_por_mes_ano, x='ano_mes', y='quantidade', color=color_param_temporal,
                 labels={'ano_mes': 'Mês/Ano', 'quantidade': 'Quantidade de Registros'},
                 template='plotly_white'
             )
-            fig_temporal.update_traces(line_color='#8A2BE2')
+            if agrupamento_selecionado == "Consolidado":
+                fig_temporal.update_traces(line_color='#8A2BE2')
         else: # Linha
             fig_temporal = px.line(
-                registros_por_mes_ano, x='ano_mes', y='quantidade',
+                registros_por_mes_ano, x='ano_mes', y='quantidade', color=color_param_temporal,
                 labels={'ano_mes': 'Mês/Ano', 'quantidade': 'Quantidade de Registros'},
                 template='plotly_white', markers=True
             )
-            fig_temporal.update_traces(line_color='#8A2BE2')
+            if agrupamento_selecionado == "Consolidado":
+                fig_temporal.update_traces(line_color='#8A2BE2')
         st.plotly_chart(fig_temporal, use_container_width=True)
         st.markdown("---")
 
