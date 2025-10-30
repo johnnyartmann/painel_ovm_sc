@@ -562,6 +562,54 @@ def criar_tabela_consolidada(df, coluna_agrupamento, nome_agrupamento):
     df_consolidado.rename(columns={coluna_agrupamento: nome_coluna, 'fato_comunicado': 'Fato Comunicado'}, inplace=True)
     
     return df_consolidado
+
+# --- FUNÇÃO PARA CRIAR A TABELA CONSOLIDADA DE TOTAIS ---
+def criar_tabela_total_consolidada(df):
+    """Cria uma tabela consolidada com o total de crimes por tipo."""
+    df_agrupado = df.groupby(['fato_comunicado', 'ano']).size().reset_index(name='total_crime')
+    df_pivot = df_agrupado.pivot_table(index='fato_comunicado', columns='ano', values='total_crime', fill_value=0)
+    
+    # Garante que todas as colunas de ano sejam inteiros, se possível
+    anos_existentes = [col for col in df_pivot.columns if isinstance(col, (int, float))]
+    if anos_existentes:
+        anos_todos = range(int(min(anos_existentes)), int(max(anos_existentes)) + 1)
+        for ano in anos_todos:
+            if ano not in df_pivot.columns:
+                df_pivot[ano] = 0
+
+    df_pivot = df_pivot.reindex(sorted(df_pivot.columns), axis=1)
+    df_pivot['total'] = df_pivot.sum(axis=1)
+    
+    anos = sorted([col for col in df_pivot.columns if isinstance(col, (int, float))])
+
+    if len(anos) > 1:
+        for i in range(1, len(anos)):
+            ano_atual = anos[i]
+            ano_anterior = anos[i-1]
+            coluna_evolucao = f'Diferença {ano_anterior}-{ano_atual}'
+            
+            # Evita a divisão por zero
+            denominador = df_pivot[ano_anterior].replace(0, pd.NA)
+            df_pivot[coluna_evolucao] = (df_pivot[ano_atual] - df_pivot[ano_anterior]) / denominador * 100
+
+    anos_int = sorted([col for col in df_pivot.columns if isinstance(col, int)])
+    
+    ordem_colunas = []
+    if anos_int:
+        ordem_colunas.append(anos_int[0])
+        for i in range(1, len(anos_int)):
+            ano_anterior = anos_int[i-1]
+            ano_atual = anos_int[i]
+            ordem_colunas.append(ano_atual)
+            coluna_evolucao = f'Diferença {ano_anterior}-{ano_atual}'
+            if coluna_evolucao in df_pivot.columns:
+                ordem_colunas.append(coluna_evolucao)
+    
+    ordem_colunas.append('total')
+    df_consolidado = df_pivot[ordem_colunas].reset_index()
+    df_consolidado.rename(columns={'fato_comunicado': 'Fato Comunicado'}, inplace=True)
+    
+    return df_consolidado
     
 @st.cache_data
 def carregar_dados_regioes():
@@ -926,8 +974,8 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
                 key="chart_type_faixa_etaria"
             )
             df_faixa_etaria = df_geral_filtrado.dropna(subset=['idade_vitima'])
-            bins = [0, 17, 24, 34, 44, 59, 120]
-            labels = ['0-17 anos', '18-24 anos', '25-34 anos', '35-44 anos', '45-59 anos', '60+ anos']
+            bins = [0, 12, 17, 29, 40, 50, 60, 70, 79, 120]
+            labels = ['0-12 anos', '13-17 anos', '18-29 anos', '30-40 anos', '41-50 anos', '51-60 anos', '61-70 anos', '71-79 anos', '80+ anos']
             df_faixa_etaria['faixa_etaria'] = pd.cut(df_faixa_etaria['idade_vitima'], bins=bins, labels=labels, right=True)
             registros_por_faixa = df_faixa_etaria['faixa_etaria'].value_counts().sort_index().reset_index()
             registros_por_faixa.columns = ['Faixa Etária', 'Quantidade']
@@ -983,7 +1031,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
                     registros_por_mes, names='Mês', values='Quantidade', hole=.4,
                     color_discrete_sequence=px.colors.sequential.Purples_r
                 )
-                fig_mes.update_traces(textinfo='percent+label', textposition='outside')
+                fig_mes.update_traces(textinfo='percent+label', textposition='outside', sort=False)
             st.plotly_chart(fig_mes, use_container_width=True)
         
         st.markdown("---")
@@ -995,7 +1043,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
             key="chart_type_dia_semana"
         )
         df_geral_filtrado['dia_semana'] = df_geral_filtrado['data_fato'].dt.day_name()
-        dias_ordem = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        dias_ordem = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
         df_geral_filtrado['dia_semana_cat'] = pd.Categorical(df_geral_filtrado['dia_semana'], categories=dias_ordem, ordered=True)
         registros_por_dia = df_geral_filtrado['dia_semana_cat'].value_counts().sort_index().reset_index()
         registros_por_dia.columns = ['Dia da Semana', 'Quantidade']
@@ -1063,7 +1111,29 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
             else:
                 st.warning("Não há dados para exibir na tabela consolidada com os filtros selecionados.")
         else:
-            st.info("A tabela consolidada não é exibida na visualização consolidada.")
+            st.subheader("Tabela Consolidada de Crimes (Total SC)")
+            if not df_geral_filtrado.empty:
+                tabela_total = criar_tabela_total_consolidada(df_geral_filtrado)
+                if not tabela_total.empty:
+                    colunas_evolucao = [col for col in tabela_total.columns if 'Diferença' in str(col)]
+
+                    format_dict = {col: formatar_seta_percentual for col in colunas_evolucao}
+                    
+                    anos_int = [col for col in tabela_total.columns if isinstance(col, int)]
+                    for ano in anos_int:
+                        format_dict[ano] = '{:.0f}'
+                    format_dict['total'] = '{:.0f}'
+
+                    styler = tabela_total.style.applymap(
+                        colorir_percentual,
+                        subset=colunas_evolucao
+                    ).format(format_dict)
+                    
+                    st.dataframe(styler, use_container_width=True)
+                else:
+                    st.warning("Não há dados para exibir na tabela consolidada com os filtros selecionados.")
+            else:
+                st.warning("Não há dados para exibir na tabela consolidada com os filtros selecionados.")
 
 
     # --- ABA 2: ANÁLISE DE FEMINICÍDIOS ---
