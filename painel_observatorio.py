@@ -701,12 +701,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
             help="Escolha como os dados devem ser agrupados nos gráficos e tabelas."
         )
     
-    with st.sidebar.expander("🎨 TIPO DE GRÁFICO", expanded=True):
-        chart_type = st.selectbox(
-            "Selecione o tipo de gráfico",
-            ("Barras", "Pizza"),
-            help="Selecione o tipo de gráfico para visualização"
-        )
 
     # Botão para resetar filtros
     st.sidebar.markdown("---")
@@ -811,6 +805,11 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
         col_graf1, col_graf2 = st.columns(2)
         with col_graf1:
             st.subheader("Registros de Ocorrências por Ano")
+            chart_type_ano = st.selectbox(
+                "Tipo de Gráfico",
+                ("Barras", "Pizza"),
+                key="chart_type_ano"
+            )
             if agrupamento_selecionado == "Consolidado":
                 registros_por_ano = df_geral_filtrado['ano'].value_counts().sort_index().reset_index()
                 registros_por_ano.columns = ['ano', 'Quantidade']
@@ -825,7 +824,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
                 registros_por_ano = df_geral_filtrado.groupby(['ano', coluna_agrupamento]).size().reset_index(name='Quantidade')
                 color_param = coluna_agrupamento
 
-            if chart_type == "Barras":
+            if chart_type_ano == "Barras":
                 fig_ano = px.bar(
                     registros_por_ano, x='ano', y='Quantidade', color=color_param,
                     labels={'ano': 'Ano', 'Quantidade': 'Quantidade'}, template='plotly_white', text='Quantidade'
@@ -844,6 +843,11 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
 
         with col_graf2:
             st.subheader("Tipos de Crimes Mais Frequentes")
+            chart_type_fato = st.selectbox(
+                "Tipo de Gráfico",
+                ("Barras", "Pizza"),
+                key="chart_type_fato"
+            )
             if agrupamento_selecionado == "Consolidado":
                 registros_por_fato = df_geral_filtrado['fato_comunicado'].value_counts().reset_index()
                 registros_por_fato.columns = ['fato_comunicado', 'Quantidade']
@@ -858,7 +862,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
                 registros_por_fato = df_geral_filtrado.groupby(['fato_comunicado', coluna_agrupamento]).size().reset_index(name='Quantidade')
                 color_param = coluna_agrupamento
 
-            if chart_type == "Barras":
+            if chart_type_fato == "Barras":
                 fig_fato = px.bar(
                     registros_por_fato, x='Quantidade', y='fato_comunicado', color=color_param, orientation='h',
                     labels={'fato_comunicado': 'Tipo de Crime', 'Quantidade': 'Quantidade'}, template='plotly_white', text='Quantidade'
@@ -881,6 +885,11 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
         col_graf3, col_graf4 = st.columns(2)
         with col_graf3:
             st.subheader("Distribuição por Faixa Etária da Vítima")
+            chart_type_faixa_etaria = st.selectbox(
+                "Tipo de Gráfico",
+                ("Barras", "Pizza"),
+                key="chart_type_faixa_etaria"
+            )
             df_faixa_etaria = df_geral_filtrado.dropna(subset=['idade_vitima'])
             bins = [0, 17, 24, 34, 44, 59, 120]
             labels = ['0-17 anos', '18-24 anos', '25-34 anos', '35-44 anos', '45-59 anos', '60+ anos']
@@ -888,7 +897,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
             registros_por_faixa = df_faixa_etaria['faixa_etaria'].value_counts().sort_index().reset_index()
             registros_por_faixa.columns = ['Faixa Etária', 'Quantidade']
 
-            if chart_type == "Barras":
+            if chart_type_faixa_etaria == "Barras":
                 fig_faixa_etaria = px.bar(
                     registros_por_faixa, x='Faixa Etária', y='Quantidade',
                     labels={'x': 'Faixa Etária', 'y': 'Quantidade'}, template='plotly_white', text='Quantidade'
@@ -919,6 +928,11 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
         st.markdown("---")
 
         st.subheader("Distribuição de Ocorrências por Dia da Semana")
+        chart_type_dia_semana = st.selectbox(
+            "Tipo de Gráfico",
+            ("Barras", "Pizza"),
+            key="chart_type_dia_semana"
+        )
         df_geral_filtrado['dia_semana'] = df_geral_filtrado['data_fato'].dt.day_name()
         dias_ordem = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
         df_geral_filtrado['dia_semana_cat'] = pd.Categorical(df_geral_filtrado['dia_semana'], categories=dias_ordem, ordered=True)
@@ -927,7 +941,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
         nomes_dias_pt = {'Monday': 'Segunda-feira', 'Tuesday': 'Terça-feira', 'Wednesday': 'Quarta-feira', 'Thursday': 'Quinta-feira', 'Friday': 'Sexta-feira', 'Saturday': 'Sábado', 'Sunday': 'Domingo'}
         registros_por_dia['Dia da Semana'] = registros_por_dia['Dia da Semana'].map(nomes_dias_pt)
 
-        if chart_type == "Barras":
+        if chart_type_dia_semana == "Barras":
             fig_dia_semana = px.bar(
                 registros_por_dia, x='Dia da Semana', y='Quantidade',
                 labels={'x': 'Dia da Semana', 'y': 'Quantidade'}, template='plotly_white', text='Quantidade'
@@ -1003,6 +1017,11 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
         col_graf_fem1, col_graf_fem2 = st.columns(2)
         with col_graf_fem1:
             st.subheader("Vínculo entre a Vítima e o Autor")
+            chart_type_vinculo = st.selectbox(
+                "Tipo de Gráfico",
+                ("Barras", "Pizza"),
+                key="chart_type_vinculo"
+            )
             if agrupamento_selecionado == "Consolidado":
                 vinculo_autor = df_feminicidio_filtrado['relacao_autor'].value_counts().reset_index()
                 vinculo_autor.columns = ['relacao_autor', 'Quantidade']
@@ -1017,7 +1036,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
                 vinculo_autor = df_feminicidio_filtrado.groupby(['relacao_autor', coluna_agrupamento]).size().reset_index(name='Quantidade')
                 color_param = coluna_agrupamento
             
-            if chart_type == "Barras":
+            if chart_type_vinculo == "Barras":
                 fig_vinculo = px.bar(
                     vinculo_autor, x='Quantidade', y='relacao_autor', color=color_param, orientation='h',
                     labels={'relacao_autor': 'Vínculo com o Autor', 'Quantidade': 'Quantidade'}, template='plotly_white', text='Quantidade'
@@ -1037,6 +1056,11 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
         
         with col_graf_fem2:
             st.subheader("Meio Utilizado para o Crime")
+            chart_type_meio = st.selectbox(
+                "Tipo de Gráfico",
+                ("Barras", "Pizza"),
+                key="chart_type_meio"
+            )
             if agrupamento_selecionado == "Consolidado":
                 meio_crime = df_feminicidio_filtrado['meio_crime'].value_counts().reset_index()
                 meio_crime.columns = ['meio_crime', 'Quantidade']
@@ -1051,7 +1075,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
                 meio_crime = df_feminicidio_filtrado.groupby(['meio_crime', coluna_agrupamento]).size().reset_index(name='Quantidade')
                 color_param = coluna_agrupamento
 
-            if chart_type == "Barras":
+            if chart_type_meio == "Barras":
                 fig_meio = px.bar(
                     meio_crime, x='meio_crime', y='Quantidade', color=color_param,
                     labels={'meio_crime': 'Meio Utilizado', 'Quantidade': 'Quantidade'}, template='plotly_white', text='Quantidade'
@@ -1117,6 +1141,11 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
         
         # --- LINHA 3 DE GRÁFICOS ---
         st.subheader("Localidade do Crime")
+        chart_type_localidade = st.selectbox(
+            "Tipo de Gráfico",
+            ("Barras", "Pizza"),
+            key="chart_type_localidade"
+        )
         if agrupamento_selecionado == "Consolidado":
             localidade_crime = df_feminicidio_filtrado['localidade'].value_counts().reset_index()
             localidade_crime.columns = ['localidade', 'Quantidade']
@@ -1131,7 +1160,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
             localidade_crime = df_feminicidio_filtrado.groupby(['localidade', coluna_agrupamento]).size().reset_index(name='Quantidade')
             color_param = coluna_agrupamento
 
-        if chart_type == "Barras":
+        if chart_type_localidade == "Barras":
             fig_localidade = px.bar(
                 localidade_crime, x='localidade', y='Quantidade', color=color_param,
                 labels={'localidade': 'Localidade', 'Quantidade': 'Quantidade'}, template='plotly_white', text='Quantidade'
