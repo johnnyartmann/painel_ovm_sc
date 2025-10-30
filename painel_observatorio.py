@@ -714,15 +714,16 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
                 municipio_selecionado = municipios_disponiveis
         
         st.subheader("👥 PERFIL DA VÍTIMA")
-        idades_disponiveis = sorted(df_geral['idade_vitima'].dropna().unique())
         idade_selecionada = st.slider(
             "Faixa Etária", 
-            min_value=int(idades_disponiveis[0]), 
-            max_value=int(idades_disponiveis[-1]), 
-            value=(int(idades_disponiveis[0]), int(idades_disponiveis[-1])),
-            help="Ajuste o intervalo de idade das vítimas"
+            min_value=0, 
+            max_value=100, 
+            value=(0, 100),
+            help="Ajuste o intervalo de idade das vítimas. Se o valor máximo for 100, incluirá todas as idades acima."
         )
-        st.caption(f"Idades: {idade_selecionada[0]} a {idade_selecionada[1]} anos")
+        
+        idade_max_texto = "100+ anos" if idade_selecionada[1] == 100 else f"{idade_selecionada[1]} anos"
+        st.caption(f"Idades: {idade_selecionada[0]} a {idade_max_texto}")
         
         st.subheader("🚨 TIPO DE CRIME")
         fatos_disponiveis = sorted(df_geral['fato_comunicado'].unique())
@@ -756,6 +757,8 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
     if st.sidebar.button("🔄 Resetar Todos os Filtros", use_container_width=True):
         st.rerun()
 
+    idade_max_filtro = float('inf') if idade_selecionada[1] == 100 else idade_selecionada[1]
+
     df_geral_filtrado = df_geral[
         (df_geral['data_fato'].dt.date >= data_inicial) &
         (df_geral['data_fato'].dt.date <= data_final) &
@@ -763,7 +766,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
         (df_geral['municipio'].isin(municipio_selecionado)) &
         (df_geral['mesoregiao'].isin(mesoregiao_selecionado)) &
         (df_geral['associacao'].isin(associacao_selecionado)) &
-        (df_geral['idade_vitima'] >= idade_selecionada[0]) & (df_geral['idade_vitima'] <= idade_selecionada[1])
+        (df_geral['idade_vitima'] >= idade_selecionada[0]) & (df_geral['idade_vitima'] <= idade_max_filtro)
     ]
     
     df_feminicidio_filtrado = df_feminicidio[
@@ -772,7 +775,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
         (df_feminicidio['municipio'].isin(municipio_selecionado)) &
         (df_feminicidio['mesoregiao'].isin(mesoregiao_selecionado)) &
         (df_feminicidio['associacao'].isin(associacao_selecionado)) &
-        (df_feminicidio['idade_vitima'] >= idade_selecionada[0]) & (df_feminicidio['idade_vitima'] <= idade_selecionada[1])
+        (df_feminicidio['idade_vitima'] >= idade_selecionada[0]) & (df_feminicidio['idade_vitima'] <= idade_max_filtro)
     ]
 
     # --- ABA 1: ANÁLISE GERAL ---
