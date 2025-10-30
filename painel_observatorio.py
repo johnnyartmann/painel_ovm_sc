@@ -790,15 +790,36 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
         st.markdown("---")
 
         st.subheader("Evolução dos Registros de Ocorrências (Série Temporal)")
+        chart_type_temporal = st.selectbox(
+            "Tipo de Gráfico",
+            ("Linha", "Área", "Barras"),
+            key="chart_type_temporal"
+        )
         df_temporal = df_geral_filtrado.copy()
         df_temporal['ano_mes'] = df_temporal['data_fato'].dt.to_period('M').astype(str)
         registros_por_mes_ano = df_temporal.groupby('ano_mes').size().reset_index(name='quantidade').sort_values('ano_mes')
-        fig_temporal = px.line(
-            registros_por_mes_ano, x='ano_mes', y='quantidade',
-            labels={'ano_mes': 'Mês/Ano', 'quantidade': 'Quantidade de Registros'},
-            template='plotly_white', markers=True
-        )
-        fig_temporal.update_traces(line_color='#8A2BE2')
+
+        if chart_type_temporal == "Barras":
+            fig_temporal = px.bar(
+                registros_por_mes_ano, x='ano_mes', y='quantidade',
+                labels={'ano_mes': 'Mês/Ano', 'quantidade': 'Quantidade de Registros'},
+                template='plotly_white'
+            )
+            fig_temporal.update_traces(marker_color='#8A2BE2')
+        elif chart_type_temporal == "Área":
+            fig_temporal = px.area(
+                registros_por_mes_ano, x='ano_mes', y='quantidade',
+                labels={'ano_mes': 'Mês/Ano', 'quantidade': 'Quantidade de Registros'},
+                template='plotly_white'
+            )
+            fig_temporal.update_traces(line_color='#8A2BE2')
+        else: # Linha
+            fig_temporal = px.line(
+                registros_por_mes_ano, x='ano_mes', y='quantidade',
+                labels={'ano_mes': 'Mês/Ano', 'quantidade': 'Quantidade de Registros'},
+                template='plotly_white', markers=True
+            )
+            fig_temporal.update_traces(line_color='#8A2BE2')
         st.plotly_chart(fig_temporal, use_container_width=True)
         st.markdown("---")
 
@@ -807,7 +828,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
             st.subheader("Registros de Ocorrências por Ano")
             chart_type_ano = st.selectbox(
                 "Tipo de Gráfico",
-                ("Barras", "Pizza"),
+                ("Barras", "Pizza", "Linha", "Área"),
                 key="chart_type_ano"
             )
             if agrupamento_selecionado == "Consolidado":
@@ -832,7 +853,21 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
                 if agrupamento_selecionado == "Consolidado":
                     fig_ano.update_traces(marker_color='#8A2BE2')
                 fig_ano.update_traces(textposition='outside')
-            else:
+            elif chart_type_ano == "Linha":
+                fig_ano = px.line(
+                    registros_por_ano, x='ano', y='Quantidade', color=color_param,
+                    labels={'ano': 'Ano', 'Quantidade': 'Quantidade'}, template='plotly_white', markers=True
+                )
+                if agrupamento_selecionado == "Consolidado":
+                    fig_ano.update_traces(line_color='#8A2BE2')
+            elif chart_type_ano == "Área":
+                fig_ano = px.area(
+                    registros_por_ano, x='ano', y='Quantidade', color=color_param,
+                    labels={'ano': 'Ano', 'Quantidade': 'Quantidade'}, template='plotly_white'
+                )
+                if agrupamento_selecionado == "Consolidado":
+                    fig_ano.update_traces(line_color='#8A2BE2')
+            else: # Pizza
                 pie_names = 'ano' if agrupamento_selecionado == "Consolidado" else color_param
                 fig_ano = px.pie(
                     registros_por_ano, names=pie_names, values='Quantidade',
@@ -913,16 +948,42 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
             st.plotly_chart(fig_faixa_etaria, use_container_width=True)
         with col_graf4:
             st.subheader("Distribuição de Ocorrências por Mês")
+            chart_type_mes = st.selectbox(
+                "Tipo de Gráfico",
+                ("Pizza", "Barras", "Linha", "Área"),
+                key="chart_type_mes"
+            )
             meses_ordem = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
             df_geral_filtrado['mes_cat'] = pd.Categorical(df_geral_filtrado['mes'], categories=meses_ordem, ordered=True)
-            registros_por_mes = df_geral_filtrado['mes_cat'].value_counts().sort_index()
+            registros_por_mes = df_geral_filtrado['mes_cat'].value_counts().sort_index().reset_index()
+            registros_por_mes.columns = ['Mês', 'Quantidade']
             nomes_meses_pt = {'January': 'Janeiro', 'February': 'Fevereiro', 'March': 'Março', 'April': 'Abril', 'May': 'Maio', 'June': 'Junho', 'July': 'Julho', 'August': 'Agosto', 'September': 'Setembro', 'October': 'Outubro', 'November': 'Novembro', 'December': 'Dezembro'}
-            registros_por_mes.index = registros_por_mes.index.map(nomes_meses_pt)
-            fig_mes = px.pie(
-                values=registros_por_mes.values, names=registros_por_mes.index, hole=.4,
-                color_discrete_sequence=px.colors.sequential.Purples_r
-            )
-            fig_mes.update_traces(textinfo='percent+label', textposition='outside')
+            registros_por_mes['Mês'] = registros_por_mes['Mês'].map(nomes_meses_pt)
+
+            if chart_type_mes == "Barras":
+                fig_mes = px.bar(
+                    registros_por_mes, x='Mês', y='Quantidade',
+                    labels={'x': 'Mês', 'y': 'Quantidade'}, template='plotly_white', text='Quantidade'
+                )
+                fig_mes.update_traces(marker_color='#9370DB', textposition='outside')
+            elif chart_type_mes == "Linha":
+                fig_mes = px.line(
+                    registros_por_mes, x='Mês', y='Quantidade',
+                    labels={'x': 'Mês', 'y': 'Quantidade'}, template='plotly_white', markers=True
+                )
+                fig_mes.update_traces(line_color='#9370DB')
+            elif chart_type_mes == "Área":
+                fig_mes = px.area(
+                    registros_por_mes, x='Mês', y='Quantidade',
+                    labels={'x': 'Mês', 'y': 'Quantidade'}, template='plotly_white'
+                )
+                fig_mes.update_traces(line_color='#9370DB')
+            else: # Pizza
+                fig_mes = px.pie(
+                    registros_por_mes, names='Mês', values='Quantidade', hole=.4,
+                    color_discrete_sequence=px.colors.sequential.Purples_r
+                )
+                fig_mes.update_traces(textinfo='percent+label', textposition='outside')
             st.plotly_chart(fig_mes, use_container_width=True)
         
         st.markdown("---")
@@ -930,7 +991,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
         st.subheader("Distribuição de Ocorrências por Dia da Semana")
         chart_type_dia_semana = st.selectbox(
             "Tipo de Gráfico",
-            ("Barras", "Pizza"),
+            ("Barras", "Pizza", "Linha", "Área"),
             key="chart_type_dia_semana"
         )
         df_geral_filtrado['dia_semana'] = df_geral_filtrado['data_fato'].dt.day_name()
@@ -947,6 +1008,18 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
                 labels={'x': 'Dia da Semana', 'y': 'Quantidade'}, template='plotly_white', text='Quantidade'
             )
             fig_dia_semana.update_traces(marker_color='#8A2BE2', textposition='outside')
+        elif chart_type_dia_semana == "Linha":
+            fig_dia_semana = px.line(
+                registros_por_dia, x='Dia da Semana', y='Quantidade',
+                labels={'x': 'Dia da Semana', 'y': 'Quantidade'}, template='plotly_white', markers=True
+            )
+            fig_dia_semana.update_traces(line_color='#8A2BE2')
+        elif chart_type_dia_semana == "Área":
+            fig_dia_semana = px.area(
+                registros_por_dia, x='Dia da Semana', y='Quantidade',
+                labels={'x': 'Dia da Semana', 'y': 'Quantidade'}, template='plotly_white'
+            )
+            fig_dia_semana.update_traces(line_color='#8A2BE2')
         else:
             fig_dia_semana = px.pie(
                 registros_por_dia, names='Dia da Semana', values='Quantidade',
@@ -1097,22 +1170,48 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
         col_graf_fem1, col_graf_fem2 = st.columns(2)
         with col_graf_fem1:
             st.subheader("Distribuição de Idade da Vítima")
-            df_idade_vitima = df_feminicidio_filtrado.dropna(subset=['idade_vitima'])
-            fig_idade_vitima = px.histogram(
-                df_idade_vitima, x='idade_vitima', nbins=20,
-                labels={'idade_vitima': 'Idade da Vítima', 'count': 'Quantidade'},
-                template='plotly_white', color_discrete_sequence=['#8e24aa']
+            chart_type_idade_vitima = st.selectbox(
+                "Tipo de Gráfico",
+                ("Histograma", "Gráfico de Densidade"),
+                key="chart_type_idade_vitima"
             )
+            df_idade_vitima = df_feminicidio_filtrado.dropna(subset=['idade_vitima'])
+            if chart_type_idade_vitima == "Histograma":
+                fig_idade_vitima = px.histogram(
+                    df_idade_vitima, x='idade_vitima', nbins=20,
+                    labels={'idade_vitima': 'Idade da Vítima', 'count': 'Quantidade'},
+                    template='plotly_white', color_discrete_sequence=['#8e24aa']
+                )
+            else: # Gráfico de Densidade
+                fig_idade_vitima = px.violin(
+                    df_idade_vitima, y='idade_vitima',
+                    labels={'idade_vitima': 'Idade da Vítima'},
+                    template='plotly_white', color_discrete_sequence=['#8e24aa'],
+                    box=True, points="all"
+                )
             st.plotly_chart(fig_idade_vitima, use_container_width=True)
         
         with col_graf_fem2:
             st.subheader("Distribuição de Idade do Autor")
-            df_idade_autor = df_feminicidio_filtrado.dropna(subset=['idade_autor'])
-            fig_idade_autor = px.histogram(
-                df_idade_autor, x='idade_autor', nbins=20,
-                labels={'idade_autor': 'Idade do Autor', 'count': 'Quantidade'},
-                template='plotly_white', color_discrete_sequence=['#ab47bc']
+            chart_type_idade_autor = st.selectbox(
+                "Tipo de Gráfico",
+                ("Histograma", "Gráfico de Densidade"),
+                key="chart_type_idade_autor"
             )
+            df_idade_autor = df_feminicidio_filtrado.dropna(subset=['idade_autor'])
+            if chart_type_idade_autor == "Histograma":
+                fig_idade_autor = px.histogram(
+                    df_idade_autor, x='idade_autor', nbins=20,
+                    labels={'idade_autor': 'Idade do Autor', 'count': 'Quantidade'},
+                    template='plotly_white', color_discrete_sequence=['#ab47bc']
+                )
+            else: # Gráfico de Densidade
+                fig_idade_autor = px.violin(
+                    df_idade_autor, y='idade_autor',
+                    labels={'idade_autor': 'Idade do Autor'},
+                    template='plotly_white', color_discrete_sequence=['#ab47bc'],
+                    box=True, points="all"
+                )
             st.plotly_chart(fig_idade_autor, use_container_width=True)
 
         st.markdown("---")
@@ -1121,20 +1220,48 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
         col_graf_fem3, col_graf_fem4 = st.columns(2)
         with col_graf_fem3:
             st.subheader("Vítima Possuía B.O. contra o Autor?")
-            bo_contra_autor = df_feminicidio_filtrado['bo_de_vd_contra_o_autor'].value_counts()
-            fig_bo = px.pie(
-                values=bo_contra_autor.values, names=bo_contra_autor.index, hole=0.4,
-                color_discrete_sequence=px.colors.sequential.Purples_r
+            chart_type_bo = st.selectbox(
+                "Tipo de Gráfico",
+                ("Pizza", "Barras"),
+                key="chart_type_bo"
             )
+            bo_contra_autor = df_feminicidio_filtrado['bo_de_vd_contra_o_autor'].value_counts().reset_index()
+            bo_contra_autor.columns = ['Resposta', 'Quantidade']
+            
+            if chart_type_bo == "Barras":
+                fig_bo = px.bar(
+                    bo_contra_autor, x='Resposta', y='Quantidade',
+                    labels={'Resposta': 'Resposta', 'Quantidade': 'Quantidade'}, template='plotly_white', text='Quantidade'
+                )
+                fig_bo.update_traces(marker_color='#8e24aa', textposition='outside')
+            else:
+                fig_bo = px.pie(
+                    bo_contra_autor, names='Resposta', values='Quantidade', hole=0.4,
+                    color_discrete_sequence=px.colors.sequential.Purples_r
+                )
             st.plotly_chart(fig_bo, use_container_width=True)
 
         with col_graf_fem4:
             st.subheader("Autor Foi Preso?")
-            autor_preso = df_feminicidio_filtrado['autor_preso'].value_counts()
-            fig_preso = px.pie(
-                values=autor_preso.values, names=autor_preso.index, hole=0.4,
-                color_discrete_sequence=px.colors.sequential.Purples_r
+            chart_type_preso = st.selectbox(
+                "Tipo de Gráfico",
+                ("Pizza", "Barras"),
+                key="chart_type_preso"
             )
+            autor_preso = df_feminicidio_filtrado['autor_preso'].value_counts().reset_index()
+            autor_preso.columns = ['Resposta', 'Quantidade']
+
+            if chart_type_preso == "Barras":
+                fig_preso = px.bar(
+                    autor_preso, x='Resposta', y='Quantidade',
+                    labels={'Resposta': 'Resposta', 'Quantidade': 'Quantidade'}, template='plotly_white', text='Quantidade'
+                )
+                fig_preso.update_traces(marker_color='#ab47bc', textposition='outside')
+            else:
+                fig_preso = px.pie(
+                    autor_preso, names='Resposta', values='Quantidade', hole=0.4,
+                    color_discrete_sequence=px.colors.sequential.Purples_r
+                )
             st.plotly_chart(fig_preso, use_container_width=True)
         
         st.markdown("---")
@@ -1183,25 +1310,51 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
         col_graf_fem5, col_graf_fem6 = st.columns(2)
         with col_graf_fem5:
             st.subheader("Autor com Registro de B.O.?")
-            autor_bo = df_feminicidio_filtrado['passagem_policial'].value_counts()
-            fig_autor_bo = px.pie(
-                values=autor_bo.values, names=autor_bo.index, hole=0.4,
-                color_discrete_sequence=px.colors.sequential.Purples_r
+            chart_type_autor_bo = st.selectbox(
+                "Tipo de Gráfico",
+                ("Pizza", "Barras"),
+                key="chart_type_autor_bo"
             )
+            autor_bo = df_feminicidio_filtrado['passagem_policial'].value_counts().reset_index()
+            autor_bo.columns = ['Resposta', 'Quantidade']
+            if chart_type_autor_bo == "Barras":
+                fig_autor_bo = px.bar(
+                    autor_bo, x='Resposta', y='Quantidade',
+                    labels={'Resposta': 'Resposta', 'Quantidade': 'Quantidade'}, template='plotly_white', text='Quantidade'
+                )
+                fig_autor_bo.update_traces(marker_color='#8e24aa', textposition='outside')
+            else:
+                fig_autor_bo = px.pie(
+                    autor_bo, names='Resposta', values='Quantidade', hole=0.4,
+                    color_discrete_sequence=px.colors.sequential.Purples_r
+                )
             st.plotly_chart(fig_autor_bo, use_container_width=True)
 
         with col_graf_fem6:
             st.subheader("Autor com B.O. por Violência Doméstica?")
             # --- CÓDIGO MAIS ROBUSTO ADICIONADO ---
             if 'passagem_por_violencia_domestica' in df_feminicidio_filtrado.columns:
-                autor_bo_vd = df_feminicidio_filtrado['passagem_por_violencia_domestica'].value_counts()
+                chart_type_autor_bo_vd = st.selectbox(
+                    "Tipo de Gráfico",
+                    ("Pizza", "Barras"),
+                    key="chart_type_autor_bo_vd"
+                )
+                autor_bo_vd = df_feminicidio_filtrado['passagem_por_violencia_domestica'].value_counts().reset_index()
+                autor_bo_vd.columns = ['Resposta', 'Quantidade']
                 
                 # Garante que há dados para plotar
                 if not autor_bo_vd.empty:
-                    fig_autor_bo_vd = px.pie(
-                        values=autor_bo_vd.values, names=autor_bo_vd.index, hole=0.4,
-                        color_discrete_sequence=px.colors.sequential.Purples_r
-                    )
+                    if chart_type_autor_bo_vd == "Barras":
+                        fig_autor_bo_vd = px.bar(
+                            autor_bo_vd, x='Resposta', y='Quantidade',
+                            labels={'Resposta': 'Resposta', 'Quantidade': 'Quantidade'}, template='plotly_white', text='Quantidade'
+                        )
+                        fig_autor_bo_vd.update_traces(marker_color='#ab47bc', textposition='outside')
+                    else:
+                        fig_autor_bo_vd = px.pie(
+                            autor_bo_vd, names='Resposta', values='Quantidade', hole=0.4,
+                            color_discrete_sequence=px.colors.sequential.Purples_r
+                        )
                     st.plotly_chart(fig_autor_bo_vd, use_container_width=True)
                 else:
                     st.info("Não há dados sobre B.O. por violência doméstica para os filtros selecionados.")
@@ -1212,6 +1365,11 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
 
         # --- LINHA 5 DE GRÁFICOS ---
         st.subheader("Quantidade de Feminicídios por Mês/Ano")
+        chart_type_fem_mes_ano = st.selectbox(
+            "Tipo de Gráfico",
+            ("Barras", "Linha", "Área"),
+            key="chart_type_fem_mes_ano"
+        )
         df_feminicidio_filtrado['ano_mes'] = df_feminicidio_filtrado['data_fato'].dt.to_period('M').astype(str)
         if agrupamento_selecionado == "Consolidado":
             feminicidios_por_mes = df_feminicidio_filtrado.groupby('ano_mes').size().reset_index(name='Quantidade')
@@ -1226,20 +1384,42 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
             feminicidios_por_mes = df_feminicidio_filtrado.groupby(['ano_mes', coluna_agrupamento]).size().reset_index(name='Quantidade')
             color_param = coluna_agrupamento
         feminicidios_por_mes.rename(columns={'ano_mes': 'Mês/Ano'}, inplace=True)
-        fig_mes_ano = px.bar(
-            feminicidios_por_mes, x='Mês/Ano', y='Quantidade', color=color_param,
-            labels={'x': 'Mês/Ano', 'y': 'Quantidade'},
-            template='plotly_white', text='Quantidade'
-        )
-        if agrupamento_selecionado == "Consolidado":
-            fig_mes_ano.update_traces(marker_color='#8A2BE2')
-        fig_mes_ano.update_traces(textposition='outside')
+        if chart_type_fem_mes_ano == "Linha":
+            fig_mes_ano = px.line(
+                feminicidios_por_mes, x='Mês/Ano', y='Quantidade', color=color_param,
+                labels={'x': 'Mês/Ano', 'y': 'Quantidade'},
+                template='plotly_white', markers=True
+            )
+            if agrupamento_selecionado == "Consolidado":
+                fig_mes_ano.update_traces(line_color='#8A2BE2')
+        elif chart_type_fem_mes_ano == "Área":
+            fig_mes_ano = px.area(
+                feminicidios_por_mes, x='Mês/Ano', y='Quantidade', color=color_param,
+                labels={'x': 'Mês/Ano', 'y': 'Quantidade'},
+                template='plotly_white'
+            )
+            if agrupamento_selecionado == "Consolidado":
+                fig_mes_ano.update_traces(line_color='#8A2BE2')
+        else: # Barras
+            fig_mes_ano = px.bar(
+                feminicidios_por_mes, x='Mês/Ano', y='Quantidade', color=color_param,
+                labels={'x': 'Mês/Ano', 'y': 'Quantidade'},
+                template='plotly_white', text='Quantidade'
+            )
+            if agrupamento_selecionado == "Consolidado":
+                fig_mes_ano.update_traces(marker_color='#8A2BE2')
+            fig_mes_ano.update_traces(textposition='outside')
         st.plotly_chart(fig_mes_ano, use_container_width=True)
         
         st.markdown("---")
 
         # --- LINHA 6 DE GRÁFICOS ---
         st.subheader("Quantidade de Feminicídios por Ano")
+        chart_type_fem_ano = st.selectbox(
+            "Tipo de Gráfico",
+            ("Barras", "Linha", "Área"),
+            key="chart_type_fem_ano"
+        )
         if agrupamento_selecionado == "Consolidado":
             feminicidios_por_ano = df_feminicidio_filtrado['ano'].value_counts().sort_index().reset_index()
             feminicidios_por_ano.columns = ['ano', 'Quantidade']
@@ -1254,13 +1434,28 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
             feminicidios_por_ano = df_feminicidio_filtrado.groupby(['ano', coluna_agrupamento]).size().reset_index(name='Quantidade')
             color_param = coluna_agrupamento
         
-        fig_ano_fem = px.bar(
-            feminicidios_por_ano, x='ano', y='Quantidade', color=color_param,
-            labels={'ano': 'Ano', 'Quantidade': 'Quantidade'}, template='plotly_white', text='Quantidade'
-        )
-        if agrupamento_selecionado == "Consolidado":
-            fig_ano_fem.update_traces(marker_color='#6a1b9a')
-        fig_ano_fem.update_traces(textposition='outside')
+        if chart_type_fem_ano == "Linha":
+            fig_ano_fem = px.line(
+                feminicidios_por_ano, x='ano', y='Quantidade', color=color_param,
+                labels={'ano': 'Ano', 'Quantidade': 'Quantidade'}, template='plotly_white', markers=True
+            )
+            if agrupamento_selecionado == "Consolidado":
+                fig_ano_fem.update_traces(line_color='#6a1b9a')
+        elif chart_type_fem_ano == "Área":
+            fig_ano_fem = px.area(
+                feminicidios_por_ano, x='ano', y='Quantidade', color=color_param,
+                labels={'ano': 'Ano', 'Quantidade': 'Quantidade'}, template='plotly_white'
+            )
+            if agrupamento_selecionado == "Consolidado":
+                fig_ano_fem.update_traces(line_color='#6a1b9a')
+        else: # Barras
+            fig_ano_fem = px.bar(
+                feminicidios_por_ano, x='ano', y='Quantidade', color=color_param,
+                labels={'ano': 'Ano', 'Quantidade': 'Quantidade'}, template='plotly_white', text='Quantidade'
+            )
+            if agrupamento_selecionado == "Consolidado":
+                fig_ano_fem.update_traces(marker_color='#6a1b9a')
+            fig_ano_fem.update_traces(textposition='outside')
         st.plotly_chart(fig_ano_fem, use_container_width=True)
 
 else:
