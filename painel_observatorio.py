@@ -918,30 +918,95 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
         st.markdown("---")
         
         st.subheader(f"Distribuição de Crimes por {agrupamento_selecionado}")
+        
+        # --- SELEÇÃO DE VISUALIZAÇÃO DO MAPA ---
+        view_type = st.radio(
+            "Selecione a visualização do mapa:",
+            ("Soma dos Crimes", "Crimes por Mil Mulheres", "% de Mulheres Vítimas"),
+            horizontal=True,
+            key="map_view_type"
+        )
 
-        # The base of the map is always the municipality
-        if agrupamento_selecionado == "Município":
-            # Use the simple count per municipality
-            map_df = df_geral_filtrado['municipio_normalizado'].value_counts().reset_index()
-            map_df.columns = ['municipio_normalizado', 'quantidade']
+        map_df = pd.DataFrame()
+        color_col = 'value'
+        label_text = 'Valor'
 
-        elif agrupamento_selecionado == "Consolidado":
-            # Use the simple count per municipality
-            map_df = df_geral_filtrado['municipio_normalizado'].value_counts().reset_index()
-            map_df.columns = ['municipio_normalizado', 'quantidade']
+        # Determine the column to use for coloring and the label text based on the view type
+        if view_type == "Soma dos Crimes":
+            color_col = 'quantidade'
+            label_text = f'Total de Registros ({agrupamento_selecionado})'
+        elif view_type == "Crimes por Mil Mulheres":
+            color_col = 'taxa_por_mil_mulheres'
+            label_text = f'Crimes por Mil Mulheres ({agrupamento_selecionado})'
+        else: # % de Mulheres Vítimas
+            color_col = 'percentual_mulheres_vitimas'
+            label_text = f'% de Mulheres Vítimas ({agrupamento_selecionado})'
 
+        # --- DATA PREPARATION ---
+
+        # Always start with per-municipality data
+        base_map_df = df_geral_filtrado['municipio_normalizado'].value_counts().reset_index()
+        base_map_df.columns = ['municipio_normalizado', 'total_fatos']
+
+        # If the view is population-based, calculate the rates
+        if view_type != "Soma dos Crimes":
+            # Merge with population data
+            base_map_df = pd.merge(base_map_df, df_populacao, on='municipio_normalizado', how='left')
+            base_map_df.dropna(subset=['populacao_feminina'], inplace=True)
+
+            # Calculate annual average
+            anos_no_filtro = df_geral_filtrado['ano'].unique()
+            num_anos = len(anos_no_filtro) if len(anos_no_filtro) > 0 else 1
+            base_map_df['media_anual_fatos'] = base_map_df['total_fatos'] / num_anos
+
+            # Calculate the specific rate
+            if view_type == "Crimes por Mil Mulheres":
+                base_map_df[color_col] = ((base_map_df['media_anual_fatos'] / base_map_df['populacao_feminina']) * 1000).fillna(0)
+            else: # % de Mulheres Vítimas
+                base_map_df[color_col] = ((base_map_df['media_anual_fatos'] / base_map_df['populacao_feminina']) * 100).fillna(0)
+        else:
+            # For "Soma dos Crimes", the color column is just the total count
+            base_map_df.rename(columns={'total_fatos': color_col}, inplace=True)
+
+
+        # --- AGGREGATION LOGIC ---
+
+        if agrupamento_selecionado == "Município" or agrupamento_selecionado == "Consolidado":
+            map_df = base_map_df[['municipio_normalizado', color_col]]
         else: # Mesorregião or Associação
             agrupamento_col = "mesoregiao" if agrupamento_selecionado == "Mesorregião" else "associacao"
             
-            # Calculate totals for the group
-            crimes_por_grupo = df_geral_filtrado.groupby(agrupamento_col).size().reset_index(name='quantidade_grupo')
-            
-            # Get the unique municipalities and their group from the filtered data
+            # Add the grouping column to our base data
             municipio_grupo_mapping = df_geral_filtrado[['municipio_normalizado', agrupamento_col]].drop_duplicates()
+            df_with_groups = pd.merge(base_map_df, municipio_grupo_mapping, on='municipio_normalizado', how='left')
             
-            # Merge the group totals back to the municipalities
-            map_df = pd.merge(municipio_grupo_mapping, crimes_por_grupo, on=agrupamento_col)
-            map_df = map_df.rename(columns={'quantidade_grupo': 'quantidade'})
+            if view_type == "Soma dos Crimes":
+                # Sum the counts for each group
+                crimes_por_grupo = df_with_groups.groupby(agrupamento_col)[color_col].sum().reset_index()
+                # Map the summed counts back to each municipality in the group
+                map_df = pd.merge(municipio_grupo_mapping, crimes_por_grupo, on=agrupamento_col, how='left').fillna(0)
+            else: # Population-based views need weighted averages for groups
+                grouped_pop = df_with_groups.groupby(agrupamento_col).agg(
+                    total_fatos_grupo=('total_fatos', 'sum'),
+                    populacao_feminina_grupo=('populacao_feminina', 'sum')
+                ).reset_index()
+                
+                anos_no_filtro = df_geral_filtrado['ano'].unique()
+                num_anos = len(anos_no_filtro) if len(anos_no_filtro) > 0 else 1
+                grouped_pop['media_anual_grupo'] = grouped_pop['total_fatos_grupo'] / num_anos
+
+                if view_type == "Crimes por Mil Mulheres":
+                    grouped_pop[color_col] = ((grouped_pop['media_anual_grupo'] / grouped_pop['populacao_feminina_grupo']) * 1000).fillna(0)
+                else:
+                    grouped_pop[color_col] = ((grouped_pop['media_anual_grupo'] / grouped_pop['populacao_feminina_grupo']) * 100).fillna(0)
+                    
+                map_df = pd.merge(municipio_grupo_mapping, grouped_pop[[agrupamento_col, color_col]], on=agrupamento_col, how='left').fillna(0)
+
+
+        # Ensure map_df only contains municipalities that are part of the current filter
+        # This is a safety measure, though the logic above should already handle it.
+        if not map_df.empty:
+            map_df = map_df[map_df['municipio_normalizado'].isin(df_geral_filtrado['municipio_normalizado'].unique())]
 
 
         fig_mapa = px.choropleth_mapbox(
@@ -949,17 +1014,17 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             geojson=geojson_sc, 
             locations='municipio_normalizado',
             featureidkey="properties.NM_MUN_NORMALIZADO", 
-            color='quantidade',
+            color=color_col,
             color_continuous_scale="Purples", 
             mapbox_style="carto-positron",
             zoom=6, 
             center={"lat": -27.59, "lon": -50.52}, 
             opacity=0.7,
-            labels={'quantidade': f'Total de Registros ({agrupamento_selecionado})'}
+            labels={color_col: label_text}
         )
         fig_mapa.update_layout(
             margin={"r":0,"t":0,"l":0,"b":0},
-            coloraxis_showscale=False
+            coloraxis_showscale=True # Show scale for clarity
         )
         st.plotly_chart(fig_mapa, use_container_width=True)
 
