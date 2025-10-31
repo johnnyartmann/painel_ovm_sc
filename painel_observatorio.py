@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import json
 import unicodedata
 
@@ -1568,6 +1569,89 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
 
         st.markdown("---")
         
+        # --- NOVA SEÇÃO: RAIO-X DO AGRESSOR ---
+        st.subheader("Raio-X do Agressor")
+        st.markdown("""
+        Análise aprofundada sobre o perfil do agressor, incluindo a dinâmica de idade com a vítima e seu histórico criminal. 
+        Estes gráficos ajudam a identificar padrões e possíveis pontos de falha na prevenção.
+        """)
+        
+        col_raiox1, col_raiox2 = st.columns(2)
+        
+        with col_raiox1:
+            if not df_feminicidio_filtrado.empty and df_feminicidio_filtrado[['idade_vitima', 'idade_autor']].notna().all(axis=1).any():
+                fig_scatter_idade = px.scatter(
+                    df_feminicidio_filtrado.dropna(subset=['idade_vitima', 'idade_autor']),
+                    x='idade_vitima',
+                    y='idade_autor',
+                    title="Dinâmica de Idade: Vítima vs. Agressor",
+                    labels={'idade_vitima': 'Idade da Vítima', 'idade_autor': 'Idade do Autor'},
+                    color_discrete_sequence=['#8e24aa'],
+                    hover_data=['municipio', 'relacao_autor', 'meio_crime']
+                )
+                
+                max_idade = max(
+                    df_feminicidio_filtrado['idade_vitima'].max(),
+                    df_feminicidio_filtrado['idade_autor'].max()
+                )
+                
+                fig_scatter_idade.add_shape(
+                    type='line',
+                    x0=0, y0=0,
+                    x1=max_idade, y1=max_idade,
+                    line=dict(color='rgba(255, 0, 0, 0.5)', width=2, dash='dash'),
+                    name='Idade Igual'
+                )
+                
+                fig_scatter_idade.update_layout(
+                    xaxis_title="Idade da Vítima",
+                    yaxis_title="Idade do Autor",
+                    legend_title="Legenda"
+                )
+                st.plotly_chart(fig_scatter_idade, use_container_width=True)
+            else:
+                st.info("Não há dados suficientes para exibir o gráfico de correlação de idades.")
+
+        with col_raiox2:
+            if not df_feminicidio_filtrado.empty and 'passagem_policial' in df_feminicidio_filtrado.columns and 'passagem_por_violencia_domestica' in df_feminicidio_filtrado.columns:
+                total_agressores = len(df_feminicidio_filtrado)
+                com_passagem = df_feminicidio_filtrado['passagem_policial'].value_counts().get('SIM', 0)
+                sem_passagem = total_agressores - com_passagem
+                
+                com_bo_vd = len(df_feminicidio_filtrado[
+                    (df_feminicidio_filtrado['passagem_policial'] == 'SIM') &
+                    (df_feminicidio_filtrado['passagem_por_violencia_domestica'] == 'SIM')
+                ])
+                com_bo_outros = com_passagem - com_bo_vd
+
+                if total_agressores > 0:
+                    fig_sankey = go.Figure(data=[go.Sankey(
+                        node=dict(
+                            pad=15,
+                            thickness=20,
+                            line=dict(color="black", width=0.5),
+                            label=["Total de Agressores", "Com Passagem Policial", "Sem Passagem Policial", "Com B.O. por Violência Doméstica", "Com B.O. por Outros Crimes"],
+                            color=["#4a148c", "#8e24aa", "#e0e0e0", "#ab47bc", "#ce93d8"]
+                        ),
+                        link=dict(
+                            source=[0, 0, 1, 1],
+                            target=[1, 2, 3, 4],
+                            value=[com_passagem, sem_passagem, com_bo_vd, com_bo_outros],
+                            color=["rgba(142, 36, 170, 0.6)", "rgba(189, 189, 189, 0.6)", "rgba(171, 71, 188, 0.6)", "rgba(206, 147, 216, 0.6)"]
+                        ))])
+
+                    fig_sankey.update_layout(
+                        title_text="Histórico do Agressor: A Escalada da Violência",
+                        font_size=12
+                    )
+                    st.plotly_chart(fig_sankey, use_container_width=True)
+                else:
+                    st.info("Não há dados para exibir o gráfico de histórico do agressor.")
+            else:
+                st.info("Não há dados suficientes ou as colunas necessárias não existem para exibir o gráfico de histórico do agressor.")
+        
+        st.markdown("---")
+
         col_graf_fem1, col_graf_fem2 = st.columns(2)
         with col_graf_fem1:
             st.subheader("Vínculo entre a Vítima e o Autor")
