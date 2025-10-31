@@ -423,34 +423,45 @@ def carregar_dados_gerais():
     """Carrega e trata os dados da base geral, normalizando nomes de municípios."""
     try:
         df_regioes = carregar_dados_regioes()
-        df = pd.read_excel('data/base_geral.xlsx')
+        df_geral = pd.read_excel('data/base_geral.xlsx')
 
-        df.columns = (df.columns.str.strip().str.lower()
+        df_geral.columns = (df_geral.columns.str.strip().str.lower()
                       .str.replace(' ', '_', regex=False).str.replace('ã', 'a', regex=False)
                       .str.replace('ç', 'c', regex=False).str.replace('ú', 'u', regex=False))
 
-        df.rename(columns={
+        df_geral.rename(columns={
             'data_do_fato': 'data_fato', 'município': 'municipio',
             'fato_comunicado': 'fato_comunicado', 'idade': 'idade_vitima'
         }, inplace=True)
 
-        df['data_fato'] = pd.to_datetime(df['data_fato'])
-        df['idade_vitima'] = pd.to_numeric(df['idade_vitima'], errors='coerce')
+        df_geral['data_fato'] = pd.to_datetime(df_geral['data_fato'])
+        df_geral['idade_vitima'] = pd.to_numeric(df_geral['idade_vitima'], errors='coerce')
         
-        if 'municipio' in df.columns:
-            df['municipio_normalizado'] = df['municipio'].apply(normalizar_nome)
+        if 'municipio' in df_geral.columns:
+            df_geral['municipio_normalizado'] = df_geral['municipio'].apply(normalizar_nome)
 
-        df = pd.merge(df, df_regioes[['municipio_normalizado', 'mesoregiao', 'associacao']], on='municipio_normalizado', how='left')
-        df['mesoregiao'].fillna('Não informado', inplace=True)
-        df['associacao'].fillna('Não informado', inplace=True)
+        df_geral = pd.merge(df_geral, df_regioes[['municipio_normalizado', 'mesoregiao', 'associacao']], on='municipio_normalizado', how='left')
+        df_geral['mesoregiao'].fillna('Não informado', inplace=True)
+        df_geral['associacao'].fillna('Não informado', inplace=True)
         
-        df['ano'] = df['data_fato'].dt.year
-        df['mes'] = df['data_fato'].dt.month_name()
+        # Carregar dados de feminicídio para união
+        df_feminicidio_raw = carregar_dados_feminicidio()
+        if not df_feminicidio_raw.empty:
+            df_feminicidio_para_geral = df_feminicidio_raw.copy()
+            df_feminicidio_para_geral['fato_comunicado'] = 'Feminicídio'
+            
+            # Concatenar as bases
+            df_final = pd.concat([df_geral, df_feminicidio_para_geral], ignore_index=True)
+        else:
+            df_final = df_geral
+
+        df_final['ano'] = df_final['data_fato'].dt.year
+        df_final['mes'] = df_final['data_fato'].dt.month_name()
         
-        return df
+        return df_final
         
     except FileNotFoundError:
-        st.error("Arquivo 'base_geral.xlsx' não encontrado na pasta 'data'.")
+        st.error("Arquivo 'base_geral.xlsx' ou 'base_feminicidio.xlsx' não encontrado na pasta 'data'.")
         return pd.DataFrame()
     except KeyError as e:
         st.error(f"Erro de Chave (KeyError) na base geral: A coluna {e} não foi encontrada.")
