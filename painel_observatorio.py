@@ -787,6 +787,61 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             help="Selecione a data de fim do período."
         )
         
+        # --- CÁLCULO DE MÉTRICAS PARA FILTROS POPULACIONAIS ---
+        df_geral_filtrado_por_data = df_geral[
+            (df_geral['data_fato'].dt.date >= data_inicial) &
+            (df_geral['data_fato'].dt.date <= data_final)
+        ]
+        
+        crimes_por_municipio_para_filtro = df_geral_filtrado_por_data['municipio_normalizado'].value_counts().reset_index()
+        crimes_por_municipio_para_filtro.columns = ['municipio_normalizado', 'total_fatos']
+
+        df_populacional_metrics = pd.merge(
+            df_populacao.copy(),
+            crimes_por_municipio_para_filtro,
+            on='municipio_normalizado',
+            how='left'
+        )
+        df_populacional_metrics['total_fatos'].fillna(0, inplace=True)
+
+        anos_no_filtro = df_geral_filtrado_por_data['ano'].unique()
+        num_anos = len(anos_no_filtro) if len(anos_no_filtro) > 0 else 1
+
+        df_populacional_metrics['media_anual_fatos'] = df_populacional_metrics['total_fatos'] / num_anos
+        df_populacional_metrics['taxa_por_mil_mulheres'] = ((df_populacional_metrics['media_anual_fatos'] / df_populacional_metrics['populacao_feminina']) * 1000).fillna(0)
+        df_populacional_metrics['percentual_mulheres_vitimas'] = ((df_populacional_metrics['media_anual_fatos'] / df_populacional_metrics['populacao_feminina']) * 100).fillna(0)
+
+
+        st.subheader("📊 FILTROS POPULACIONAIS")
+        
+        min_pop = int(df_populacional_metrics['populacao_feminina'].min())
+        max_pop = int(df_populacional_metrics['populacao_feminina'].max())
+        pop_selecionada = st.slider(
+            "População Feminina",
+            min_value=min_pop, max_value=max_pop, value=(min_pop, max_pop)
+        )
+
+        min_media_fatos = float(df_populacional_metrics['media_anual_fatos'].min())
+        max_media_fatos = float(df_populacional_metrics['media_anual_fatos'].max())
+        media_fatos_selecionada = st.slider(
+            "Média Anual de Fatos",
+            min_value=min_media_fatos, max_value=max_media_fatos, value=(min_media_fatos, max_media_fatos)
+        )
+
+        min_taxa = float(df_populacional_metrics['taxa_por_mil_mulheres'].min())
+        max_taxa = float(df_populacional_metrics['taxa_por_mil_mulheres'].max())
+        taxa_selecionada = st.slider(
+            "Fatos por Mil Mulheres",
+            min_value=min_taxa, max_value=max_taxa, value=(min_taxa, max_taxa)
+        )
+
+        min_perc = float(df_populacional_metrics['percentual_mulheres_vitimas'].min())
+        max_perc = float(df_populacional_metrics['percentual_mulheres_vitimas'].max())
+        perc_selecionado = st.slider(
+            "% de Mulheres Vítimas",
+            min_value=min_perc, max_value=max_perc, value=(min_perc, max_perc)
+        )
+
         st.subheader("📍 LOCALIZAÇÃO")
         mesoregioes_disponiveis = sorted(df_geral['mesoregiao'].unique())
         mesoregiao_selecionado = st.multiselect(
@@ -872,6 +927,17 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
 
     idade_max_filtro = float('inf') if idade_selecionada[1] == 100 else idade_selecionada[1]
 
+    municipios_filtrados_populacao = df_populacional_metrics[
+        (df_populacional_metrics['populacao_feminina'] >= pop_selecionada[0]) &
+        (df_populacional_metrics['populacao_feminina'] <= pop_selecionada[1]) &
+        (df_populacional_metrics['media_anual_fatos'] >= media_fatos_selecionada[0]) &
+        (df_populacional_metrics['media_anual_fatos'] <= media_fatos_selecionada[1]) &
+        (df_populacional_metrics['taxa_por_mil_mulheres'] >= taxa_selecionada[0]) &
+        (df_populacional_metrics['taxa_por_mil_mulheres'] <= taxa_selecionada[1]) &
+        (df_populacional_metrics['percentual_mulheres_vitimas'] >= perc_selecionado[0]) &
+        (df_populacional_metrics['percentual_mulheres_vitimas'] <= perc_selecionado[1])
+    ]['municipio_normalizado']
+
     df_geral_filtrado = df_geral[
         (df_geral['data_fato'].dt.date >= data_inicial) &
         (df_geral['data_fato'].dt.date <= data_final) &
@@ -879,7 +945,8 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
         (df_geral['municipio'].isin(municipio_selecionado)) &
         (df_geral['mesoregiao'].isin(mesoregiao_selecionado)) &
         (df_geral['associacao'].isin(associacao_selecionado)) &
-        (df_geral['idade_vitima'] >= idade_selecionada[0]) & (df_geral['idade_vitima'] <= idade_max_filtro)
+        (df_geral['idade_vitima'] >= idade_selecionada[0]) & (df_geral['idade_vitima'] <= idade_max_filtro) &
+        (df_geral['municipio_normalizado'].isin(municipios_filtrados_populacao))
     ]
     
     df_feminicidio_filtrado = df_feminicidio[
@@ -888,7 +955,8 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
         (df_feminicidio['municipio'].isin(municipio_selecionado)) &
         (df_feminicidio['mesoregiao'].isin(mesoregiao_selecionado)) &
         (df_feminicidio['associacao'].isin(associacao_selecionado)) &
-        (df_feminicidio['idade_vitima'] >= idade_selecionada[0]) & (df_feminicidio['idade_vitima'] <= idade_max_filtro)
+        (df_feminicidio['idade_vitima'] >= idade_selecionada[0]) & (df_feminicidio['idade_vitima'] <= idade_max_filtro) &
+        (df_feminicidio['municipio_normalizado'].isin(municipios_filtrados_populacao))
     ]
 
     # --- ABA 1: ANÁLISE GERAL ---
