@@ -4,6 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import json
 import unicodedata
+import numpy as np
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
@@ -542,6 +543,28 @@ def formatar_seta_percentual(val):
         return f'{seta} {abs(val):.2f}%'
     return f'{abs(val):.2f}%'
 
+def calcular_cagr(valor_inicial, valor_final, num_anos):
+    """Calcula a Taxa de Crescimento Anual Composta (CAGR)."""
+    if isinstance(valor_inicial, pd.Series):
+        # Vectorized calculation for Series
+        # Default to NA
+        cagr = pd.Series(np.nan, index=valor_inicial.index, dtype='float64')
+        if num_anos < 3:
+            return cagr
+
+        # Create a mask for valid calculations
+        mask = (valor_inicial.notna()) & (valor_final.notna()) & (valor_inicial != 0)
+
+        # Apply calculation only on the valid subset
+        # Use .loc to ensure we're modifying the Series correctly
+        cagr.loc[mask] = ((valor_final[mask] / valor_inicial[mask]) ** (1 / (num_anos - 1)) - 1) * 100
+        return cagr
+    else:
+        # Scalar calculation (original logic)
+        if pd.isna(valor_inicial) or pd.isna(valor_final) or valor_inicial == 0 or num_anos < 3:
+            return np.nan
+        return ((valor_final / valor_inicial) ** (1 / (num_anos - 1)) - 1) * 100
+
 # --- FUNÇÃO PARA CRIAR A TABELA CONSOLIDADA ---
 def criar_tabela_consolidada(df, coluna_agrupamento, nome_agrupamento):
     """Cria uma tabela consolidada com dados de crimes por [agrupamento]."""
@@ -559,9 +582,18 @@ def criar_tabela_consolidada(df, coluna_agrupamento, nome_agrupamento):
             df_pivot[coluna_evolucao] = (
                 (df_pivot[ano_atual] - df_pivot[ano_anterior]) / df_pivot[ano_anterior].replace(0, pd.NA) * 100
             )
-
+    
     anos_int = sorted([col for col in df_pivot.columns if isinstance(col, int)])
     
+    # Excluir o ano corrente do cálculo do CAGR
+    ano_corrente = pd.Timestamp.now().year
+    anos_para_cagr = [ano for ano in anos_int if ano != ano_corrente]
+
+    if len(anos_para_cagr) >= 3:
+        valor_inicial = df_pivot[anos_para_cagr[0]]
+        valor_final = df_pivot[anos_para_cagr[-1]]
+        df_pivot['Tendência (CAGR %)'] = calcular_cagr(valor_inicial, valor_final, len(anos_para_cagr))
+
     ordem_colunas = []
     if anos_int:
         ordem_colunas.append(anos_int[0])
@@ -574,6 +606,9 @@ def criar_tabela_consolidada(df, coluna_agrupamento, nome_agrupamento):
                 ordem_colunas.append(coluna_evolucao)
     
     ordem_colunas.append('total')
+    if 'Tendência (CAGR %)' in df_pivot.columns:
+        ordem_colunas.append('Tendência (CAGR %)')
+        
     df_consolidado = df_pivot[ordem_colunas].reset_index()
     nome_coluna = f"Nome do {nome_agrupamento}" if nome_agrupamento == "Município" else nome_agrupamento
     df_consolidado.rename(columns={coluna_agrupamento: nome_coluna, 'fato_comunicado': 'Fato Comunicado'}, inplace=True)
@@ -611,6 +646,15 @@ def criar_tabela_total_consolidada(df):
 
     anos_int = sorted([col for col in df_pivot.columns if isinstance(col, int)])
     
+    # Excluir o ano corrente do cálculo do CAGR
+    ano_corrente = pd.Timestamp.now().year
+    anos_para_cagr = [ano for ano in anos_int if ano != ano_corrente]
+
+    if len(anos_para_cagr) >= 3:
+        valor_inicial = df_pivot[anos_para_cagr[0]]
+        valor_final = df_pivot[anos_para_cagr[-1]]
+        df_pivot['Tendência (CAGR %)'] = calcular_cagr(valor_inicial, valor_final, len(anos_para_cagr))
+
     ordem_colunas = []
     if anos_int:
         ordem_colunas.append(anos_int[0])
@@ -623,6 +667,9 @@ def criar_tabela_total_consolidada(df):
                 ordem_colunas.append(coluna_evolucao)
     
     ordem_colunas.append('total')
+    if 'Tendência (CAGR %)' in df_pivot.columns:
+        ordem_colunas.append('Tendência (CAGR %)')
+
     df_consolidado = df_pivot[ordem_colunas].reset_index()
     df_consolidado.rename(columns={'fato_comunicado': 'Fato Comunicado'}, inplace=True)
     
@@ -715,6 +762,15 @@ def criar_tabela_feminicidio_agrupado(df, coluna_agrupamento, nome_agrupamento):
 
     anos_int = sorted([col for col in df_pivot.columns if isinstance(col, int)])
     
+    # Excluir o ano corrente do cálculo do CAGR
+    ano_corrente = pd.Timestamp.now().year
+    anos_para_cagr = [ano for ano in anos_int if ano != ano_corrente]
+
+    if len(anos_para_cagr) >= 3:
+        valor_inicial = df_pivot[anos_para_cagr[0]]
+        valor_final = df_pivot[anos_para_cagr[-1]]
+        df_pivot['Tendência (CAGR %)'] = calcular_cagr(valor_inicial, valor_final, len(anos_para_cagr))
+
     ordem_colunas = []
     if anos_int:
         ordem_colunas.append(anos_int[0])
@@ -727,6 +783,9 @@ def criar_tabela_feminicidio_agrupado(df, coluna_agrupamento, nome_agrupamento):
                 ordem_colunas.append(coluna_evolucao)
     
     ordem_colunas.append('total')
+    if 'Tendência (CAGR %)' in df_pivot.columns:
+        ordem_colunas.append('Tendência (CAGR %)')
+
     df_consolidado = df_pivot[ordem_colunas].reset_index()
     nome_coluna = f"Nome do {nome_agrupamento}" if nome_agrupamento == "Município" else nome_agrupamento
     df_consolidado.rename(columns={coluna_agrupamento: nome_coluna}, inplace=True)
@@ -762,6 +821,16 @@ def criar_tabela_total_feminicidio(df):
             df_pivot[coluna_evolucao] = (df_pivot[ano_atual] - df_pivot[ano_anterior]) / denominador * 100
 
     anos_int = sorted([col for col in df_pivot.columns if isinstance(col, int)])
+    
+    # Excluir o ano corrente do cálculo do CAGR
+    ano_corrente = pd.Timestamp.now().year
+    anos_para_cagr = [ano for ano in anos_int if ano != ano_corrente]
+
+    if len(anos_para_cagr) >= 3:
+        valor_inicial = df_pivot[anos_para_cagr[0]]
+        valor_final = df_pivot[anos_para_cagr[-1]]
+        df_pivot['Tendência (CAGR %)'] = calcular_cagr(valor_inicial, valor_final, len(anos_para_cagr))
+
     ordem_colunas = []
     if anos_int:
         ordem_colunas.append(anos_int[0])
@@ -774,6 +843,9 @@ def criar_tabela_total_feminicidio(df):
                 ordem_colunas.append(coluna_evolucao)
     
     ordem_colunas.append('total')
+    if 'Tendência (CAGR %)' in df_pivot.columns:
+        ordem_colunas.append('Tendência (CAGR %)')
+
     df_consolidado = df_pivot[ordem_colunas].reset_index(drop=True)
     df_consolidado.insert(0, 'Tipo de Crime', 'Feminicídio')
     
@@ -1049,13 +1121,48 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
         crimes_por_dia = total_registros / num_dias if num_dias > 0 else 0
         crimes_por_hora = total_registros / (num_dias * 24) if num_dias > 0 else 0
         
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric(label="Total de Registros", value=f"{total_registros:,}".replace(",", "."))
-            st.metric(label="Média de Crimes por Dia", value=f"{crimes_por_dia:.1f}")
-        with col2:
-            st.metric(label="Idade Média da Vítima", value=f"{media_idade_vitima:.1f} anos")
-            st.metric(label="Média de Crimes por Hora", value=f"{crimes_por_hora:.2f}")
+        # --- CÁLCULO E EXIBIÇÃO DO CAGR ---
+        df_cagr_kpi = df_geral_filtrado[df_geral_filtrado['ano'] != pd.Timestamp.now().year]
+        anos_unicos = sorted(df_cagr_kpi['ano'].unique())
+        num_anos_total = len(anos_unicos)
+
+        if num_anos_total >= 3:
+            col1, col2, col3 = st.columns(3)
+            # KPI: Total de Registros
+            with col1:
+                st.metric(label="Total de Registros no Período", value=f"{total_registros:,}".replace(",", "."))
+                st.metric(label="Média de Crimes por Dia", value=f"{crimes_por_dia:.1f}")
+
+            # KPI: CAGR
+            with col2:
+                dados_por_ano = df_cagr_kpi.groupby('ano').size()
+                valor_inicial = dados_por_ano.iloc[0]
+                valor_final = dados_por_ano.iloc[-1]
+                
+                cagr = calcular_cagr(valor_inicial, valor_final, num_anos_total)
+                
+                if pd.notna(cagr):
+                    delta_cagr = f"{cagr:.1f}% ao ano"
+                    icone_cagr = "📈" if cagr > 0 else "📉"
+                    st.metric(label=f"Tendência de Longo Prazo (CAGR) {icone_cagr}", value=delta_cagr,
+                              help="Taxa de Crescimento Anual Composta no período selecionado.")
+                else:
+                    st.metric(label="Tendência de Longo Prazo (CAGR)", value="N/A", help="Dados insuficientes para cálculo.")
+                
+                st.metric(label="Média de Crimes por Hora", value=f"{crimes_por_hora:.2f}")
+
+            # KPI: Idade Média
+            with col3:
+                st.metric(label="Idade Média da Vítima", value=f"{media_idade_vitima:.1f} anos")
+        else:
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric(label="Total de Registros", value=f"{total_registros:,}".replace(",", "."))
+                st.metric(label="Média de Crimes por Dia", value=f"{crimes_por_dia:.1f}")
+            with col2:
+                st.metric(label="Idade Média da Vítima", value=f"{media_idade_vitima:.1f} anos")
+                st.metric(label="Média de Crimes por Hora", value=f"{crimes_por_hora:.2f}")
+
         st.markdown("---")
         
         st.subheader(f"Distribuição de Crimes por {agrupamento_selecionado}")
@@ -1444,7 +1551,8 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                 'Média Anual de Fatos Ocorridos': '{:.2f}',
                 'Fatos por Mil Mulheres (anual)': '{:.2f}',
                 '% de Mulheres Vítimas (anual)': '{:.2f}%',
-                'População Feminina': '{:,.0f}'
+                'População Feminina': '{:,.0f}',
+                'Tendência (CAGR %)': '{:+.1f}%'
             }),
             use_container_width=True
         )
@@ -1471,10 +1579,16 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     for ano in anos_int:
                         format_dict[ano] = '{:.0f}'
                     format_dict['total'] = '{:.0f}'
+                    if 'Tendência (CAGR %)' in tabela_consolidada.columns:
+                        format_dict['Tendência (CAGR %)'] = '{:+.1f}%'
+
+                    colunas_para_colorir = colunas_evolucao[:]
+                    if 'Tendência (CAGR %)' in tabela_consolidada.columns:
+                        colunas_para_colorir.append('Tendência (CAGR %)')
 
                     styler = tabela_consolidada.style.applymap(
                         colorir_percentual,
-                        subset=colunas_evolucao
+                        subset=colunas_para_colorir
                     ).format(format_dict)
                     
                     st.dataframe(styler, use_container_width=True)
@@ -1495,10 +1609,15 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     for ano in anos_int:
                         format_dict[ano] = '{:.0f}'
                     format_dict['total'] = '{:.0f}'
+                    format_dict['Tendência (CAGR %)'] = '{:+.1f}%'
+
+                    colunas_para_colorir = colunas_evolucao[:]
+                    if 'Tendência (CAGR %)' in tabela_total.columns:
+                        colunas_para_colorir.append('Tendência (CAGR %)')
 
                     styler = tabela_total.style.applymap(
                         colorir_percentual,
-                        subset=colunas_evolucao
+                        subset=colunas_para_colorir
                     ).format(format_dict)
                     
                     st.dataframe(styler, use_container_width=True)
@@ -2043,10 +2162,15 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     for ano in anos_int:
                         format_dict[ano] = '{:.0f}'
                     format_dict['total'] = '{:.0f}'
+                    format_dict['Tendência (CAGR %)'] = '{:+.1f}%'
+                    
+                    colunas_para_colorir = colunas_evolucao[:]
+                    if 'Tendência (CAGR %)' in tabela_feminicidio.columns:
+                        colunas_para_colorir.append('Tendência (CAGR %)')
 
                     styler = tabela_feminicidio.style.applymap(
                         colorir_percentual,
-                        subset=colunas_evolucao
+                        subset=colunas_para_colorir
                     ).format(format_dict)
                     
                     st.dataframe(styler, use_container_width=True)
@@ -2065,10 +2189,15 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     for ano in anos_int:
                         format_dict[ano] = '{:.0f}'
                     format_dict['total'] = '{:.0f}'
+                    format_dict['Tendência (CAGR %)'] = '{:+.1f}%'
+
+                    colunas_para_colorir = colunas_evolucao[:]
+                    if 'Tendência (CAGR %)' in tabela_total_fem.columns:
+                        colunas_para_colorir.append('Tendência (CAGR %)')
 
                     styler = tabela_total_fem.style.applymap(
                         colorir_percentual,
-                        subset=colunas_evolucao
+                        subset=colunas_para_colorir
                     ).format(format_dict)
                     
                     st.dataframe(styler, use_container_width=True)
@@ -2096,6 +2225,17 @@ with tab_glossario:
     Eles foram organizados e processados para possibilitar clareza no entendimento das informações e permitir a interação dos usuários.
     
     A elaboração do painel é uma parceria entre o **Observatório da Violência Contra a Mulher (OVM/SC)** e o **Ministério Público de Contas de Santa Catarina (MPC/SC)**.
+    """)
+
+    st.subheader("Análise de Tendências: Entendendo o CAGR")
+    st.markdown("""
+    Além de comparar um ano com o anterior, este painel utiliza a **Taxa de Crescimento Anual Composta (CAGR)** para analisar tendências de longo prazo.
+
+    **O que é?** O CAGR é uma medida que suaviza a volatilidade dos números anuais e nos informa qual teria sido a taxa de crescimento constante e média ao longo de todo um período.
+
+    **Por que é importante?** Enquanto a variação ano a ano pode mostrar picos e quedas bruscas, o CAGR revela a verdadeira trajetória do problema. Uma pequena queda em um único ano pode mascarar um crescimento consistente da violência ao longo de cinco anos. O CAGR ajuda a identificar problemas crônicos e a avaliar o impacto real e duradouro das políticas públicas, para além das flutuações de curto prazo.
+
+    **Como interpretar:** Um CAGR positivo (ex: +5%) indica uma tendência de crescimento no número de ocorrências, enquanto um CAGR negativo (ex: -3%) aponta para uma tendência de redução no longo prazo.
     """)
     
     st.markdown("---")
