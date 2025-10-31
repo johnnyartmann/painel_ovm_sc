@@ -616,6 +616,65 @@ def criar_tabela_total_consolidada(df):
     
     return df_consolidado
 
+# --- FUNÇÃO PARA CRIAR A TABELA POPULACIONAL AGRUPADA ---
+def criar_tabela_populacional_agrupada(df_crimes, df_pop, df_regioes, agrupamento, num_anos):
+    """Cria uma tabela de análise populacional, permitindo o agrupamento por diferentes níveis."""
+    
+    if num_anos == 0: num_anos = 1
+
+    df_pop_com_regioes = pd.merge(df_pop, df_regioes.drop(columns='municipio'), on='municipio_normalizado', how='left')
+
+    if agrupamento == "Consolidado":
+        total_fatos = df_crimes.shape[0]
+        municipios_presentes = df_crimes['municipio_normalizado'].unique()
+        pop_filtrada = df_pop_com_regioes[df_pop_com_regioes['municipio_normalizado'].isin(municipios_presentes)]
+        total_populacao = pop_filtrada['populacao_feminina'].sum()
+        
+        media_anual = total_fatos / num_anos
+        taxa = (media_anual / total_populacao) * 1000 if total_populacao > 0 else 0
+        percentual = (media_anual / total_populacao) * 100 if total_populacao > 0 else 0
+        
+        tabela = pd.DataFrame([{'Localidade': 'Santa Catarina (Filtro Aplicado)', 'População Feminina': total_populacao,
+                                'Média Anual de Fatos Ocorridos': media_anual, 'Fatos por Mil Mulheres (anual)': taxa,
+                                '% de Mulheres Vítimas (anual)': percentual}])
+        return tabela.set_index('Localidade')
+
+    coluna_agrupamento = {
+        "Município": "municipio",
+        "Mesorregião": "mesoregiao",
+        "Associação": "associacao"
+    }[agrupamento]
+
+    # Agrupar crimes
+    crimes_agrupado = df_crimes[coluna_agrupamento].value_counts().reset_index()
+    crimes_agrupado.columns = [coluna_agrupamento, 'total_fatos']
+
+    # Agrupar população
+    if agrupamento == "Município":
+        pop_agrupada = df_pop_com_regioes[[coluna_agrupamento, 'populacao_feminina']]
+    else:
+        pop_agrupada = df_pop_com_regioes.groupby(coluna_agrupamento)['populacao_feminina'].sum().reset_index()
+
+    # Juntar dados
+    df_agregado = pd.merge(crimes_agrupado, pop_agrupada, on=coluna_agrupamento, how='left')
+
+    # Calcular métricas
+    df_agregado['media_anual_fatos'] = df_agregado['total_fatos'] / num_anos
+    df_agregado['taxa_por_mil_mulheres'] = ((df_agregado['media_anual_fatos'] / df_agregado['populacao_feminina']) * 1000).fillna(0)
+    df_agregado['percentual_mulheres_vitimas'] = ((df_agregado['media_anual_fatos'] / df_agregado['populacao_feminina']) * 100).fillna(0)
+
+    # Formatar tabela final
+    tabela_final = df_agregado.rename(columns={
+        coluna_agrupamento: agrupamento,
+        'populacao_feminina': 'População Feminina',
+        'media_anual_fatos': 'Média Anual de Fatos Ocorridos',
+        'taxa_por_mil_mulheres': 'Fatos por Mil Mulheres (anual)',
+        'percentual_mulheres_vitimas': '% de Mulheres Vítimas (anual)'
+    })
+
+    return tabela_final[[agrupamento, 'População Feminina', 'Média Anual de Fatos Ocorridos', 'Fatos por Mil Mulheres (anual)', '% de Mulheres Vítimas (anual)']].set_index(agrupamento)
+
+
 # --- NOVAS FUNÇÕES PARA TABELA DE FEMINICÍDIO ---
 def criar_tabela_feminicidio_agrupado(df, coluna_agrupamento, nome_agrupamento):
     """Cria uma tabela consolidada com dados de feminicídios por [agrupamento]."""
@@ -753,6 +812,8 @@ geojson_sc = carregar_geojson_sc()
 df_geral = carregar_dados_gerais()
 df_feminicidio = carregar_dados_feminicidio()
 df_populacao = carregar_dados_populacao()
+df_regioes = carregar_dados_regioes()
+
 
 # --- BARRA LATERAL (SIDEBAR) ---
 st.sidebar.image("logo_ovm.jpeg", use_container_width=True)
@@ -1357,51 +1418,21 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
         
         st.subheader("Análise Populacional dos Crimes por Município")
         
-        # Merge com dados populacionais
-        crimes_por_municipio = df_geral_filtrado['municipio_normalizado'].value_counts().reset_index()
-        crimes_por_municipio.columns = ['municipio_normalizado', 'total_fatos']
-        
-        df_populacional_crimes = pd.merge(
-            crimes_por_municipio,
-            df_populacao,
-            on='municipio_normalizado',
-            how='left'
-        )
-        
         # Calcular anos no filtro
         anos_no_filtro = df_geral_filtrado['ano'].unique()
         num_anos = len(anos_no_filtro) if len(anos_no_filtro) > 0 else 1
         
-        # Calcular as métricas
-        df_populacional_crimes['media_anual_fatos'] = df_populacional_crimes['total_fatos'] / num_anos
-        
-        # Taxa por mil mulheres
-        df_populacional_crimes['taxa_por_mil_mulheres'] = (
-            (df_populacional_crimes['media_anual_fatos'] / df_populacional_crimes['populacao_feminina']) * 1000
-        ).fillna(0)
-        
-        # % de Mulheres Vítimas (anual) em relação à população feminina
-        df_populacional_crimes['percentual_mulheres_vitimas'] = (
-            (df_populacional_crimes['media_anual_fatos'] / df_populacional_crimes['populacao_feminina']) * 100
-        ).fillna(0)
-        
-        # Renomear e selecionar colunas para a tabela final
-        tabela_populacional = df_populacional_crimes[[
-            'municipio', 'populacao_feminina', 'media_anual_fatos',
-            'taxa_por_mil_mulheres', 'percentual_mulheres_vitimas'
-        ]].rename(columns={
-            'municipio': 'Município',
-            'populacao_feminina': 'População Feminina',
-            'media_anual_fatos': 'Média Anual de Fatos Ocorridos',
-            'taxa_por_mil_mulheres': 'Fatos por Mil Mulheres (anual)',
-            'percentual_mulheres_vitimas': '% de Mulheres Vítimas (anual)'
-        })
+        # Gerar a tabela populacional
+        tabela_populacional = criar_tabela_populacional_agrupada(
+            df_geral_filtrado, df_populacao, df_regioes, agrupamento_selecionado, num_anos
+        )
         
         st.dataframe(
             tabela_populacional.style.format({
                 'Média Anual de Fatos Ocorridos': '{:.2f}',
                 'Fatos por Mil Mulheres (anual)': '{:.2f}',
-                '% de Mulheres Vítimas (anual)': '{:.2f}%'
+                '% de Mulheres Vítimas (anual)': '{:.2f}%',
+                'População Feminina': '{:,.0f}'
             }),
             use_container_width=True
         )
