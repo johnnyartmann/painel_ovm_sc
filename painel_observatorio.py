@@ -728,10 +728,31 @@ def carregar_dados_regioes():
         st.error(f"Ocorreu um erro ao carregar os dados das regiões: {e}")
         return pd.DataFrame()
 
+@st.cache_data
+def carregar_dados_populacao():
+    """Carrega a base de população, normalizando o nome do município."""
+    try:
+        df = pd.read_excel('data/base_populacao.xlsx')
+        df.columns = (df.columns.str.strip().str.lower()
+                      .str.replace(' ', '_', regex=False)
+                      .str.replace('ã', 'a', regex=False)
+                      .str.replace('ç', 'c', regex=False)
+                      .str.replace('ô', 'o', regex=False)
+                      .str.replace('í', 'i', regex=False))
+        df['municipio_normalizado'] = df['municipio'].apply(normalizar_nome)
+        return df
+    except FileNotFoundError:
+        st.error("Arquivo 'base_populacao.xlsx' não encontrado na pasta 'data'.")
+        return pd.DataFrame()
+    except Exception as e:
+        st.error(f"Ocorreu um erro ao carregar os dados da população: {e}")
+        return pd.DataFrame()
+
 # Carregar os dados
 geojson_sc = carregar_geojson_sc()
 df_geral = carregar_dados_gerais()
 df_feminicidio = carregar_dados_feminicidio()
+df_populacao = carregar_dados_populacao()
 
 # --- BARRA LATERAL (SIDEBAR) ---
 st.sidebar.image("logo_ovm.jpeg", use_container_width=True)
@@ -742,7 +763,7 @@ tab_geral, tab_feminicidio, tab_glossario, tab_download = st.tabs([
 ])
 
 # --- LÓGICA PRINCIPAL DA APLICAÇÃO ---
-if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
+if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None and not df_populacao.empty:
     with st.sidebar:
         st.header("⚙️ Filtros de Análise")
         
@@ -1201,6 +1222,59 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None:
 
         st.markdown("---")
         
+        st.subheader("Análise Populacional dos Crimes por Município")
+        
+        # Merge com dados populacionais
+        crimes_por_municipio = df_geral_filtrado['municipio_normalizado'].value_counts().reset_index()
+        crimes_por_municipio.columns = ['municipio_normalizado', 'total_fatos']
+        
+        df_populacional_crimes = pd.merge(
+            crimes_por_municipio,
+            df_populacao,
+            on='municipio_normalizado',
+            how='left'
+        )
+        
+        # Calcular anos no filtro
+        anos_no_filtro = df_geral_filtrado['ano'].unique()
+        num_anos = len(anos_no_filtro) if len(anos_no_filtro) > 0 else 1
+        
+        # Calcular as métricas
+        df_populacional_crimes['media_anual_fatos'] = df_populacional_crimes['total_fatos'] / num_anos
+        
+        # Taxa por mil mulheres
+        df_populacional_crimes['taxa_por_mil_mulheres'] = (
+            (df_populacional_crimes['media_anual_fatos'] / df_populacional_crimes['populacao_feminina']) * 1000
+        ).fillna(0)
+        
+        # % de Mulheres Vítimas (anual) em relação à população feminina
+        df_populacional_crimes['percentual_mulheres_vitimas'] = (
+            (df_populacional_crimes['media_anual_fatos'] / df_populacional_crimes['populacao_feminina']) * 100
+        ).fillna(0)
+        
+        # Renomear e selecionar colunas para a tabela final
+        tabela_populacional = df_populacional_crimes[[
+            'municipio', 'populacao_feminina', 'media_anual_fatos',
+            'taxa_por_mil_mulheres', 'percentual_mulheres_vitimas'
+        ]].rename(columns={
+            'municipio': 'Município',
+            'populacao_feminina': 'População Feminina',
+            'media_anual_fatos': 'Média Anual de Fatos Ocorridos',
+            'taxa_por_mil_mulheres': 'Fatos por Mil Mulheres (anual)',
+            'percentual_mulheres_vitimas': '% de Mulheres Vítimas (anual)'
+        })
+        
+        st.dataframe(
+            tabela_populacional.style.format({
+                'Média Anual de Fatos Ocorridos': '{:.2f}',
+                'Fatos por Mil Mulheres (anual)': '{:.2f}',
+                '% de Mulheres Vítimas (anual)': '{:.2f}%'
+            }),
+            use_container_width=True
+        )
+
+        st.markdown("---")
+
         if agrupamento_selecionado != "Consolidado":
             mapa_agrupamento_tabela = {
                 "Município": "municipio",
