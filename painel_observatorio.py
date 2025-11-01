@@ -420,6 +420,59 @@ def carregar_geojson_sc():
         st.error("Arquivo 'municipios_sc.json' não encontrado na pasta 'data'.")
         return None
 
+# --- FUNÇÃO PARA CALCULAR O ÍNDICE DE LETALIDADE ---
+def calcular_indice_letalidade(df_geral_filtrado, df_feminicidio_filtrado, agrupamento):
+    """Calcula o Índice de Letalidade da Violência."""
+    coluna_agrupamento_map = {
+        "Município": "municipio_normalizado",
+        "Mesorregião": "mesoregiao",
+        "Associação": "associacao"
+    }
+    if agrupamento not in coluna_agrupamento_map:
+        return pd.DataFrame()
+    
+    coluna_agrupamento = coluna_agrupamento_map[agrupamento]
+
+    # Contar ocorrências da base geral (que não são feminicídios)
+    # A base df_geral_filtrado já contém feminicídios, então precisamos excluí-los
+    df_ocorrencias_puras = df_geral_filtrado[df_geral_filtrado['fato_comunicado'] != 'Feminicídio']
+    total_ocorrencias = df_ocorrencias_puras.groupby(coluna_agrupamento).size().reset_index(name='total_ocorrencias')
+    
+    # Contar feminicídios
+    total_feminicidios = df_feminicidio_filtrado.groupby(coluna_agrupamento).size().reset_index(name='total_feminicidios')
+    
+    # Unir os dados
+    df_letalidade = pd.merge(total_ocorrencias, total_feminicidios, on=coluna_agrupamento, how='outer').fillna(0)
+    
+    # Converter para int
+    df_letalidade['total_ocorrencias'] = df_letalidade['total_ocorrencias'].astype(int)
+    df_letalidade['total_feminicidios'] = df_letalidade['total_feminicidios'].astype(int)
+    
+    # Calcular o índice conforme a fórmula: (fem / (ocorrencias + fem)) * 10000
+    soma_total = df_letalidade['total_ocorrencias'] + df_letalidade['total_feminicidios']
+    df_letalidade['indice_letalidade'] = np.where(
+        soma_total > 0,
+        (df_letalidade['total_feminicidios'] / soma_total) * 10000,
+        0
+    )
+    
+    # Adicionar a coluna de total de eventos
+    df_letalidade['total_eventos'] = soma_total
+
+    # Renomear a coluna de agrupamento
+    df_letalidade.rename(columns={coluna_agrupamento: 'localidade'}, inplace=True)
+    
+    # Reordenar colunas
+    df_final = df_letalidade[[
+        'localidade', 
+        'total_eventos',
+        'total_ocorrencias', 
+        'total_feminicidios', 
+        'indice_letalidade'
+    ]]
+
+    return df_final.sort_values(by='indice_letalidade', ascending=False)
+
 @st.cache_data
 def carregar_dados_gerais():
     """Carrega e trata os dados da base geral, normalizando nomes de municípios."""
@@ -903,8 +956,13 @@ df_regioes = carregar_dados_regioes()
 st.sidebar.image("logo_ovm.jpeg", use_container_width=True)
 
 # --- ESTRUTURA COM ABAS (TABS) ---
-tab_geral, tab_feminicidio, tab_vulnerabilidade, tab_glossario, tab_download = st.tabs([
-    "📊 Análise Geral da Violência", "🚨 Análise de Feminicídios", "🎯 Análise de Vulnerabilidade", "📖 Metodologia e Glossário", "📥 Download de Dados"
+tab_geral, tab_feminicidio, tab_letalidade, tab_vulnerabilidade, tab_glossario, tab_download = st.tabs([
+    "📊 Análise Geral", 
+    "🚨 Análise de Feminicídios",
+    "📈 Índice de Letalidade",
+    "🎯 Análise de Vulnerabilidade", 
+    "📖 Metodologia e Glossário", 
+    "📥 Download de Dados"
 ])
 
 # --- LÓGICA PRINCIPAL DA APLICAÇÃO ---
@@ -1024,6 +1082,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                 help="Digite para buscar. Deixe vazio para todos"
             )
             if not municipio_selecionado:
+                municipio_selecionado = municipios_disponiveis
                 municipio_selecionado = municipios_disponiveis
         
         st.subheader("👥 PERFIL DA VÍTIMA")
@@ -2206,6 +2265,87 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             else:
                 st.warning("Não há dados para exibir na tabela de feminicídios com os filtros selecionados.")
 
+# --- ABA 3: ÍNDICE DE LETALIDADE ---
+with tab_letalidade:
+    st.header("Índice de Letalidade da Violência")
+    st.markdown("""
+    **A Grande Pergunta:** Qual a probabilidade de uma denúncia de violência em um determinado município escalar para um feminicídio?
+
+    Este índice diferencia o volume de denúncias da **falha fatal do sistema de prevenção**. Um município pode ter poucas denúncias, mas uma alta taxa de letalidade, indicando um problema gravíssimo e silencioso. O índice é calculado como:
+    
+    `Índice = (Total de Feminicídios / (Total de Ocorrências de Violência + Total de Feminicídios)) * 10.000`
+
+    Isso representa: *"Para cada 10.000 ocorrências de violência contra a mulher, X resultam em morte."*
+    """)
+    
+    # O agrupamento "Consolidado" não faz sentido para este índice, pois queremos comparar localidades.
+    if agrupamento_selecionado == "Consolidado":
+        st.warning("Por favor, selecione um nível de agrupamento (Município, Mesorregião ou Associação) para visualizar o Índice de Letalidade.")
+    else:
+        # Calcular o índice
+        df_letalidade_calculado = calcular_indice_letalidade(df_geral_filtrado, df_feminicidio_filtrado, agrupamento_selecionado)
+        
+        if df_letalidade_calculado.empty:
+            st.info("Não há dados suficientes para calcular o Índice de Letalidade com os filtros selecionados.")
+        else:
+            st.subheader(f"Mapa Coroplético do Índice de Letalidade por {agrupamento_selecionado}")
+
+            # Preparar dados para o mapa
+            if agrupamento_selecionado == "Município":
+                map_df_letalidade = df_letalidade_calculado.rename(columns={'localidade': 'municipio_normalizado'})
+            else: # Mesorregião ou Associação
+                # Mapear o valor do índice do grupo para cada município pertencente ao grupo
+                mapa_grupo_para_indice = df_letalidade_calculado.set_index('localidade')['indice_letalidade']
+                
+                coluna_agrupamento = "mesoregiao" if agrupamento_selecionado == "Mesorregião" else "associacao"
+                
+                # Pegar a lista de municípios únicos do filtro atual
+                municipios_no_filtro = df_geral_filtrado[['municipio_normalizado', coluna_agrupamento]].drop_duplicates()
+                
+                # Mapear o índice
+                municipios_no_filtro['indice_letalidade'] = municipios_no_filtro[coluna_agrupamento].map(mapa_grupo_para_indice)
+                map_df_letalidade = municipios_no_filtro.fillna(0)
+
+            fig_mapa_letalidade = px.choropleth_mapbox(
+                map_df_letalidade, 
+                geojson=geojson_sc, 
+                locations='municipio_normalizado',
+                featureidkey="properties.NM_MUN_NORMALIZADO", 
+                color='indice_letalidade',
+                color_continuous_scale="OrRd", # Laranja para Vermelho indica perigo
+                mapbox_style="carto-positron",
+                zoom=6, 
+                center={"lat": -27.59, "lon": -50.52}, 
+                opacity=0.7,
+                labels={'indice_letalidade': f'Índice de Letalidade (a cada 10.000 eventos)'}
+            )
+            fig_mapa_letalidade.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
+            st.plotly_chart(fig_mapa_letalidade, use_container_width=True)
+
+            st.markdown("---")
+            
+            st.subheader(f"Ranking do Índice de Letalidade por {agrupamento_selecionado}")
+            st.markdown("A tabela abaixo classifica as localidades com maior risco de letalidade. O índice alto, mesmo com poucas ocorrências, é um sinal de alerta.")
+            
+            # Formatar a tabela de ranking
+            df_ranking = df_letalidade_calculado.rename(columns={
+                'localidade': agrupamento_selecionado,
+                'total_eventos': 'Total de Eventos (Ocorrências + Feminicídios)',
+                'total_ocorrencias': 'Ocorrências de Violência',
+                'total_feminicidios': 'Feminicídios',
+                'indice_letalidade': 'Índice de Letalidade'
+            }).set_index(agrupamento_selecionado)
+
+            st.dataframe(
+                df_ranking.style.format({
+                    'Índice de Letalidade': '{:.2f}',
+                    'Total de Eventos (Ocorrências + Feminicídios)': '{:.0f}',
+                    'Ocorrências de Violência': '{:.0f}',
+                    'Feminicídios': '{:.0f}'
+                }).background_gradient(cmap='OrRd', subset=['Índice de Letalidade']),
+                use_container_width=True
+            )
+
     with tab_vulnerabilidade:
         st.header("Análise de Vulnerabilidade por Faixa Etária e Tipo de Crime")
         st.markdown("""
@@ -2290,9 +2430,9 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             st.warning("Não há dados suficientes para gerar o heatmap com os filtros selecionados.")
 
 
-else:
-    with tab_geral:
-        st.error("🚨 Dados não carregados. Verifique os arquivos em `data/`.")
+    if not df_vulnerabilidade.empty:
+        with tab_geral:
+            st.error("🚨 Dados não carregados. Verifique os arquivos em `data/`.")
         st.warning("Certifique-se de que os arquivos `base_geral.xlsx`, `base_feminicidio.xlsx` e `municipios_sc.json` existem na pasta `data`.")
     with tab_feminicidio:
         st.error("🚨 Dados não carregados. Verifique os arquivos em `data/`.")
@@ -2429,3 +2569,57 @@ with tab_download:
                 file_name="municipios_sc.json",
                 mime="application/json"
             )
+# --- NOVA FUNÇÃO PARA CALCULAR O ÍNDICE DE LETALIDADE ---
+def calcular_indice_letalidade(df_geral_filtrado, df_feminicidio_filtrado, agrupamento):
+    """Calcula o Índice de Letalidade da Violência."""
+    coluna_agrupamento_map = {
+        "Município": "municipio_normalizado",
+        "Mesorregião": "mesoregiao",
+        "Associação": "associacao"
+    }
+    if agrupamento not in coluna_agrupamento_map:
+        return pd.DataFrame()
+    
+    coluna_agrupamento = coluna_agrupamento_map[agrupamento]
+
+    # Contar ocorrências da base geral (que não são feminicídios, conforme a interpretação da fórmula)
+    # A base df_geral_filtrado já contém feminicídios, então precisamos excluí-los para a contagem de 'total_ocorrencias'
+    df_ocorrencias_puras = df_geral_filtrado[df_geral_filtrado['fato_comunicado'] != 'Feminicídio']
+    total_ocorrencias = df_ocorrencias_puras.groupby(coluna_agrupamento).size().reset_index(name='total_ocorrencias')
+    
+    # Contar feminicídios a partir do dataframe de feminicidios
+    total_feminicidios = df_feminicidio_filtrado.groupby(coluna_agrupamento).size().reset_index(name='total_feminicidios')
+    
+    # Unir os dados
+    df_letalidade = pd.merge(total_ocorrencias, total_feminicidios, on=coluna_agrupamento, how='outer').fillna(0)
+    
+    # Converter para int
+    df_letalidade['total_ocorrencias'] = df_letalidade['total_ocorrencias'].astype(int)
+    df_letalidade['total_feminicidios'] = df_letalidade['total_feminicidios'].astype(int)
+    
+    # Calcular o índice conforme a fórmula: (fem / (ocorrencias + fem))
+    soma_total = df_letalidade['total_ocorrencias'] + df_letalidade['total_feminicidios']
+    df_letalidade['indice_letalidade'] = np.where(
+        soma_total > 0,
+        (df_letalidade['total_feminicidios'] / soma_total) * 10000, # Usando 10.000 como na sugestão
+        0
+    )
+    
+    # Adicionar a coluna de total de eventos para a tabela
+    df_letalidade['total_eventos'] = soma_total
+
+    # Renomear a coluna de agrupamento para um nome genérico
+    df_letalidade.rename(columns={coluna_agrupamento: 'localidade'}, inplace=True)
+    
+    # Reordenar colunas
+    df_final = df_letalidade[[
+        'localidade', 
+        'total_eventos',
+        'total_ocorrencias', 
+        'total_feminicidios', 
+        'indice_letalidade'
+    ]]
+
+    return df_final.sort_values(by='indice_letalidade', ascending=False)
+    
+
