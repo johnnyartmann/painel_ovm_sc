@@ -903,8 +903,8 @@ df_regioes = carregar_dados_regioes()
 st.sidebar.image("logo_ovm.jpeg", use_container_width=True)
 
 # --- ESTRUTURA COM ABAS (TABS) ---
-tab_geral, tab_feminicidio, tab_glossario, tab_download = st.tabs([
-    "📊 Análise Geral da Violência", "🚨 Análise de Feminicídios", "📖 Metodologia e Glossário", "📥 Download de Dados"
+tab_geral, tab_feminicidio, tab_vulnerabilidade, tab_glossario, tab_download = st.tabs([
+    "📊 Análise Geral da Violência", "🚨 Análise de Feminicídios", "🎯 Análise de Vulnerabilidade", "📖 Metodologia e Glossário", "📥 Download de Dados"
 ])
 
 # --- LÓGICA PRINCIPAL DA APLICAÇÃO ---
@@ -2205,6 +2205,90 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     st.warning("Não há dados para exibir na tabela de feminicídios com os filtros selecionados.")
             else:
                 st.warning("Não há dados para exibir na tabela de feminicídios com os filtros selecionados.")
+
+    with tab_vulnerabilidade:
+        st.header("Análise de Vulnerabilidade por Faixa Etária e Tipo de Crime")
+        st.markdown("""
+        Esta análise segmenta o problema por demografia, em vez de geografia, para identificar janelas de vulnerabilidade específicas na vida de uma mulher para certos tipos de crime. O objetivo é permitir a criação de campanhas de prevenção e políticas de proteção mais direcionadas.
+        
+        **A grande questão:** O perfil da violência muda drasticamente conforme a idade da vítima?
+        """)
+
+        # --- GRÁFICO DE BARRAS 100% EMPILHADO ---
+        st.subheader("Visualização da Distribuição de Crimes por Faixa Etária")
+        
+        # 1. Preparar os dados
+        df_vulnerabilidade = df_geral_filtrado.dropna(subset=['idade_vitima']).copy()
+        bins = [0, 12, 17, 29, 40, 50, 60, 70, 79, 120]
+        labels = ['0-12 anos', '13-17 anos', '18-29 anos', '30-40 anos', '41-50 anos', '51-60 anos', '61-70 anos', '71-79 anos', '80+ anos']
+        df_vulnerabilidade['faixa_etaria'] = pd.cut(df_vulnerabilidade['idade_vitima'], bins=bins, labels=labels, right=True)
+
+        # 2. Calcular a distribuição percentual
+        if not df_vulnerabilidade.empty:
+            # Agrupar por faixa etária e tipo de crime
+            crime_counts = df_vulnerabilidade.groupby(['faixa_etaria', 'fato_comunicado']).size().unstack(fill_value=0)
+            
+            # Calcular o percentual (normalizar por linha)
+            crime_percentages = crime_counts.div(crime_counts.sum(axis=1), axis=0) * 100
+            
+            # Resetar o índice para que 'faixa_etaria' se torne uma coluna
+            crime_percentages = crime_percentages.reset_index()
+            
+            # Transformar de formato wide para long para o Plotly
+            df_plot = crime_percentages.melt(
+                id_vars='faixa_etaria', 
+                var_name='fato_comunicado', 
+                value_name='percentual'
+            )
+
+            # 3. Criar o gráfico
+            fig_barras_vulnerabilidade = px.bar(
+                df_plot,
+                x='faixa_etaria',
+                y='percentual',
+                color='fato_comunicado',
+                title="Distribuição Percentual de Tipos de Crime por Faixa Etária",
+                labels={'faixa_etaria': 'Faixa Etária da Vítima', 'percentual': 'Percentual de Ocorrências (%)', 'fato_comunicado': 'Tipo de Crime'},
+                template='plotly_white',
+                color_discrete_sequence=px.colors.sequential.Purples_r
+            )
+            fig_barras_vulnerabilidade.update_layout(
+                barmode='stack',
+                yaxis_ticksuffix='%'
+            )
+            st.plotly_chart(fig_barras_vulnerabilidade, use_container_width=True)
+        else:
+            st.warning("Não há dados suficientes para gerar o gráfico de vulnerabilidade com os filtros selecionados.")
+
+        st.markdown("---")
+
+        # --- TABELA DE HEATMAP ---
+        st.subheader("Análise de Concentração: Heatmap de Crimes por Faixa Etária")
+        st.markdown("""
+        O heatmap abaixo mostra a concentração de tipos de crime em cada faixa etária. Células mais escuras indicam uma maior concentração (em números absolutos), destacando quais crimes são mais prevalentes em determinados períodos da vida da mulher.
+        """)
+
+        if not df_vulnerabilidade.empty:
+            # Reutilizando df_vulnerabilidade já calculado
+            crime_counts_heatmap = df_vulnerabilidade.groupby(['faixa_etaria', 'fato_comunicado']).size().unstack(fill_value=0)
+            
+            fig_heatmap = go.Figure(data=go.Heatmap(
+                z=crime_counts_heatmap.values,
+                x=crime_counts_heatmap.columns,
+                y=crime_counts_heatmap.index,
+                colorscale='Purples',
+                hoverongaps=False
+            ))
+
+            fig_heatmap.update_layout(
+                title="Concentração de Crimes (Absoluto) por Faixa Etária e Tipo",
+                xaxis_title="Tipo de Crime",
+                yaxis_title="Faixa Etária da Vítima",
+            )
+            st.plotly_chart(fig_heatmap, use_container_width=True)
+        else:
+            st.warning("Não há dados suficientes para gerar o heatmap com os filtros selecionados.")
+
 
 else:
     with tab_geral:
