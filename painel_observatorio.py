@@ -997,7 +997,17 @@ tab_geral, tab_feminicidio, tab_analises_avancadas, tab_glossario, tab_download 
 if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None and not df_populacao.empty and not df_calendario.empty:
     with st.sidebar:
         st.header("⚙️ Filtros de Análise")
+
+        # --- VISUALIZAÇÃO / AGRUPAMENTO (MOVIMENTEI PARA CIMA) ---
+        st.subheader("📊 VISUALIZAR POR")
+        agrupamento_selecionado = st.selectbox(
+            "Agrupar por",
+            options=["Consolidado", "Município", "Mesorregião", "Associação"],
+            index=0,
+            help="Escolha como os dados devem ser agrupados nos gráficos e tabelas."
+        )
         
+        # --- PERÍODO ---
         st.subheader("📅 PERÍODO")
         min_date = df_geral['data_fato'].min().date()
         max_date = df_geral['data_fato'].max().date()
@@ -1022,7 +1032,76 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             (df_geral['data_fato'].dt.date >= data_inicial) &
             (df_geral['data_fato'].dt.date <= data_final)
         ]
+
+        # --- LOCALIZAÇÃO ---
+        st.subheader("📍 LOCALIZAÇÃO")
         
+        municipios_disponiveis = sorted(df_geral_filtrado_por_data['municipio'].dropna().unique())
+        
+        todos_municipios = st.checkbox("Todos os municípios", value=True, help="Marque para selecionar todos")
+        
+        if todos_municipios:
+            municipio_selecionado = municipios_disponiveis
+            st.info(f"✓ {len(municipios_disponiveis)} municípios selecionados")
+        else:
+            municipio_selecionado = st.multiselect(
+                "Município(s) específico(s)", 
+                options=municipios_disponiveis,
+                default=[],
+                help="Digite para buscar. Deixe vazio para todos"
+            )
+            if not municipio_selecionado:
+                municipio_selecionado = municipios_disponiveis
+        
+        mesoregioes_disponiveis = sorted([m for m in df_geral['mesoregiao'].unique() if m != 'Não informado'])
+        mesoregiao_selecionado = st.multiselect(
+            "Mesorregião(ões)", 
+            options=mesoregioes_disponiveis, 
+            default=mesoregioes_disponiveis,
+            help="Filtre por mesorregião de Santa Catarina"
+        )
+        
+        associacoes_disponiveis = sorted([a for a in df_geral['associacao'].dropna().unique() if a != 'Não informado'])
+        associacao_selecionado = st.multiselect(
+            "Associação(ões)",
+            options=associacoes_disponiveis,
+            default=associacoes_disponiveis,
+            help="Filtre por associação de municípios"
+        )
+
+        # --- TIPO DE CRIME ---
+        st.subheader("🚨 TIPO DE CRIME")
+        fatos_disponiveis = sorted(df_geral['fato_comunicado'].unique())
+        
+        todos_crimes = st.checkbox("Todos os tipos", value=True, help="Marque para incluir todos os crimes")
+        
+        if todos_crimes:
+            fato_selecionado = fatos_disponiveis
+            st.info(f"✓ {len(fatos_disponiveis)} tipos selecionados")
+        else:
+            fato_selecionado = st.multiselect(
+                "Tipo(s) de crime", 
+                options=fatos_disponiveis,
+                default=[],
+                help="Selecione tipos específicos de crime"
+            )
+            if not fato_selecionado:
+                fato_selecionado = fatos_disponiveis
+        
+        # --- PERFIL DA VÍTIMA ---
+        st.subheader("👥 PERFIL DA VÍTIMA")
+        idade_selecionada = st.slider(
+            "Faixa Etária", 
+            min_value=0, 
+            max_value=100, 
+            value=(0, 100),
+            help="Ajuste o intervalo de idade das vítimas. Se o valor máximo for 100, incluirá todas as idades acima."
+        )
+        
+        idade_max_texto = "100+ anos" if idade_selecionada[1] == 100 else f"{idade_selecionada[1]} anos"
+        st.caption(f"Idades: {idade_selecionada[0]} a {idade_max_texto}")
+        
+        # --- CÁLCULOS PARA FILTROS POPULACIONAIS ---
         crimes_por_municipio_para_filtro = df_geral_filtrado_por_data['municipio_normalizado'].value_counts().reset_index()
         crimes_por_municipio_para_filtro.columns = ['municipio_normalizado', 'total_fatos']
 
@@ -1041,7 +1120,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
         df_populacional_metrics['taxa_por_mil_mulheres'] = ((df_populacional_metrics['media_anual_fatos'] / df_populacional_metrics['populacao_feminina']) * 1000).fillna(0)
         df_populacional_metrics['percentual_mulheres_vitimas'] = ((df_populacional_metrics['media_anual_fatos'] / df_populacional_metrics['populacao_feminina']) * 100).fillna(0)
 
-
+        # --- FILTROS POPULACIONAIS ---
         st.subheader("📊 FILTROS POPULACIONAIS")
         
         min_pop = int(df_populacional_metrics['populacao_feminina'].min())
@@ -1071,89 +1150,12 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             "% de Mulheres Vítimas",
             min_value=min_perc, max_value=max_perc, value=(min_perc, max_perc)
         )
-
-        st.subheader("📍 LOCALIZAÇÃO")
-        mesoregioes_disponiveis = sorted(df_geral['mesoregiao'].unique())
-        mesoregiao_selecionado = st.multiselect(
-            "Mesorregião(ões)", 
-            options=mesoregioes_disponiveis, 
-            default=mesoregioes_disponiveis,
-            help="Filtre por mesorregião de Santa Catarina"
-        )
-        
-        associacoes_disponiveis = sorted(df_geral['associacao'].dropna().unique())
-        associacao_selecionado = st.multiselect(
-            "Associação(ões)",
-            options=associacoes_disponiveis,
-            default=associacoes_disponiveis,
-            help="Filtre por associação de municípios"
-        )
-        
-        if mesoregiao_selecionado:
-            municipios_filtrados = df_geral[df_geral['mesoregiao'].isin(mesoregiao_selecionado)]['municipio'].unique()
-        else:
-            municipios_filtrados = df_geral['municipio'].unique()
-        
-        municipios_disponiveis = sorted(municipios_filtrados)
-        
-        todos_municipios = st.checkbox("Todos os municípios", value=True, help="Marque para selecionar todos")
-        
-        if todos_municipios:
-            municipio_selecionado = municipios_disponiveis
-            st.info(f"✓ {len(municipios_disponiveis)} municípios selecionados")
-        else:
-            municipio_selecionado = st.multiselect(
-                "Município(s) específico(s)", 
-                options=municipios_disponiveis,
-                default=[],
-                help="Digite para buscar. Deixe vazio para todos"
-            )
-            if not municipio_selecionado:
-                municipio_selecionado = municipios_disponiveis
-                municipio_selecionado = municipios_disponiveis
-        
-        st.subheader("👥 PERFIL DA VÍTIMA")
-        idade_selecionada = st.slider(
-            "Faixa Etária", 
-            min_value=0, 
-            max_value=100, 
-            value=(0, 100),
-            help="Ajuste o intervalo de idade das vítimas. Se o valor máximo for 100, incluirá todas as idades acima."
-        )
-        
-        idade_max_texto = "100+ anos" if idade_selecionada[1] == 100 else f"{idade_selecionada[1]} anos"
-        st.caption(f"Idades: {idade_selecionada[0]} a {idade_max_texto}")
-        
-        st.subheader("🚨 TIPO DE CRIME")
-        fatos_disponiveis = sorted(df_geral['fato_comunicado'].unique())
-        
-        todos_crimes = st.checkbox("Todos os tipos", value=True, help="Marque para incluir todos os crimes")
-        
-        if todos_crimes:
-            fato_selecionado = fatos_disponiveis
-            st.info(f"✓ {len(fatos_disponiveis)} tipos selecionados")
-        else:
-            fato_selecionado = st.multiselect(
-                "Tipo(s) de crime", 
-                options=fatos_disponiveis,
-                default=[],
-                help="Selecione tipos específicos de crime"
-            )
-            if not fato_selecionado:
-                fato_selecionado = fatos_disponiveis
-        
-        st.subheader("📊 AGRUPAMENTO DE DADOS")
-        agrupamento_selecionado = st.selectbox(
-            "Agrupar por",
-            options=["Consolidado", "Município", "Mesorregião", "Associação"],
-            index=0,
-            help="Escolha como os dados devem ser agrupados nos gráficos e tabelas."
-        )
     
     st.sidebar.markdown("---")
     if st.sidebar.button("🔄 Resetar Todos os Filtros", use_container_width=True):
         st.rerun()
 
+    # --- LÓGICA DE FILTRAGEM FINAL ---
     idade_max_filtro = float('inf') if idade_selecionada[1] == 100 else idade_selecionada[1]
 
     municipios_filtrados_populacao = df_populacional_metrics[
