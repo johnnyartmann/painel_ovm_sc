@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 import json
 import unicodedata
 import numpy as np
+from shapely.geometry import shape, Point
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
@@ -392,7 +393,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- NOVA FUNÇÃO AUXILIAR PARA NORMALIZAR TEXTO ---
 def normalizar_nome(nome):
     """Remove acentos, caracteres especiais e converte para maiúsculo."""
     if isinstance(nome, str):
@@ -400,8 +400,6 @@ def normalizar_nome(nome):
         nome_sem_acento = "".join([c for c in nfkd_form if not unicodedata.combining(c)])
         return nome_sem_acento.upper().strip()
     return nome
-
-# --- FUNÇÕES PARA CARREGAR OS DADOS ---
 
 @st.cache_data
 def carregar_geojson_sc():
@@ -420,7 +418,35 @@ def carregar_geojson_sc():
         st.error("Arquivo 'municipios_sc.json' não encontrado na pasta 'data'.")
         return None
 
-# --- FUNÇÃO PARA CALCULAR O ÍNDICE DE LETALIDADE ---
+@st.cache_data
+def mapear_vizinhos(_geojson_data):
+    """Cria um mapa de adjacência (municípios vizinhos) a partir do GeoJSON."""
+    if _geojson_data is None:
+        return {}
+    
+    geometrias = {}
+    for feature in _geojson_data['features']:
+        nome_normalizado = feature['properties'].get('NM_MUN_NORMALIZADO')
+        if nome_normalizado:
+            geometrias[nome_normalizado] = shape(feature['geometry'])
+
+    vizinhos = {nome: [] for nome in geometrias.keys()}
+    nomes_municipios = list(geometrias.keys())
+
+    for i in range(len(nomes_municipios)):
+        for j in range(i + 1, len(nomes_municipios)):
+            nome1 = nomes_municipios[i]
+            nome2 = nomes_municipios[j]
+            geom1 = geometrias[nome1]
+            geom2 = geometrias[nome2]
+            
+            # Verifica se as geometrias se tocam ou se intersectam
+            if geom1.touches(geom2) or geom1.intersects(geom2):
+                vizinhos[nome1].append(nome2)
+                vizinhos[nome2].append(nome1)
+    
+    return vizinhos
+
 def calcular_indice_letalidade(df_geral_filtrado, df_feminicidio_filtrado, agrupamento):
     """Calcula o Índice de Letalidade da Violência."""
     coluna_agrupamento_map = {
@@ -433,36 +459,27 @@ def calcular_indice_letalidade(df_geral_filtrado, df_feminicidio_filtrado, agrup
     
     coluna_agrupamento = coluna_agrupamento_map[agrupamento]
 
-    # Contar ocorrências da base geral (que não são feminicídios)
-    # A base df_geral_filtrado já contém feminicídios, então precisamos excluí-los
     df_ocorrencias_puras = df_geral_filtrado[df_geral_filtrado['fato_comunicado'] != 'Feminicídio']
     total_ocorrencias = df_ocorrencias_puras.groupby(coluna_agrupamento).size().reset_index(name='total_ocorrencias')
     
-    # Contar feminicídios
     total_feminicidios = df_feminicidio_filtrado.groupby(coluna_agrupamento).size().reset_index(name='total_feminicidios')
     
-    # Unir os dados
     df_letalidade = pd.merge(total_ocorrencias, total_feminicidios, on=coluna_agrupamento, how='outer').fillna(0)
     
-    # Converter para int
     df_letalidade['total_ocorrencias'] = df_letalidade['total_ocorrencias'].astype(int)
     df_letalidade['total_feminicidios'] = df_letalidade['total_feminicidios'].astype(int)
     
-    # Calcular o índice conforme a fórmula: (fem / (ocorrencias + fem)) * 10000
     soma_total = df_letalidade['total_ocorrencias'] + df_letalidade['total_feminicidios']
     df_letalidade['indice_letalidade'] = np.where(
         soma_total > 0,
-        (df_letalidade['total_feminicidios'] / soma_total) * 10000,
+        (df_letalidade['total_feminicidios'] / soma_total) * 100,
         0
     )
     
-    # Adicionar a coluna de total de eventos
     df_letalidade['total_eventos'] = soma_total
 
-    # Renomear a coluna de agrupamento
     df_letalidade.rename(columns={coluna_agrupamento: 'localidade'}, inplace=True)
     
-    # Reordenar colunas
     df_final = df_letalidade[[
         'localidade', 
         'total_eventos',
@@ -499,13 +516,11 @@ def carregar_dados_gerais():
         df_geral['mesoregiao'].fillna('Não informado', inplace=True)
         df_geral['associacao'].fillna('Não informado', inplace=True)
         
-        # Carregar dados de feminicídio para união
         df_feminicidio_raw = carregar_dados_feminicidio()
         if not df_feminicidio_raw.empty:
             df_feminicidio_para_geral = df_feminicidio_raw.copy()
             df_feminicidio_para_geral['fato_comunicado'] = 'Feminicídio'
             
-            # Concatenar as bases
             df_final = pd.concat([df_geral, df_feminicidio_para_geral], ignore_index=True)
         else:
             df_final = df_geral
@@ -529,8 +544,6 @@ def carregar_dados_feminicidio():
         df_regioes = carregar_dados_regioes()
         df = pd.read_excel('data/base_feminicidio.xlsx')
 
-        # 1. Renomeia as colunas de forma explícita com base nos cabeçalhos da imagem.
-        # Isso é mais seguro do que a limpeza automática para nomes complexos.
         df.rename(columns={
             'DATA': 'data_fato',
             'MUNICÍPIO': 'municipio',
@@ -539,13 +552,11 @@ def carregar_dados_feminicidio():
             'IDADE AUTOR': 'idade_autor',
             'IDADE VITIMA': 'idade_vitima',
             'PASSAGEM POLICIAL': 'passagem_policial',
-            'PASSAGEM POR VIOLÊNCIA DOMÉSTICA': 'passagem_por_violencia_domestica', # <-- A chave do problema
+            'PASSAGEM POR VIOLÊNCIA DOMÉSTICA': 'passagem_por_violencia_domestica',
             'PRISÃO': 'autor_preso',
             'MEIO': 'meio_crime'
-            # As outras colunas (FATO, LOCALIDADE) serão padronizadas no próximo passo
         }, inplace=True)
 
-        # 2. Aplica uma limpeza padrão para as colunas restantes.
         df.columns = (df.columns.str.strip().str.lower()
                       .str.replace(' ', '_', regex=False)
                       .str.replace('ã', 'a', regex=False)
@@ -553,9 +564,8 @@ def carregar_dados_feminicidio():
                       .str.replace('ú', 'u', regex=False)
                       .str.replace('ô', 'o', regex=False)
                       .str.replace('ê', 'e', regex=False)
-                      .str.replace('á', 'a', regex=False)) # Adicionado para garantir consistência
+                      .str.replace('á', 'a', regex=False))
 
-        # 3. Converte os tipos de dados como antes
         df['data_fato'] = pd.to_datetime(df['data_fato'])
         df['idade_vitima'] = pd.to_numeric(df['idade_vitima'], errors='coerce')
         df['idade_autor'] = pd.to_numeric(df['idade_autor'], errors='coerce')
@@ -579,7 +589,20 @@ def carregar_dados_feminicidio():
         st.write("Colunas encontradas no arquivo:", pd.read_excel('data/base_feminicidio.xlsx').columns.tolist())
         return pd.DataFrame()
 
-# --- FUNÇÕES DE ESTILIZAÇÃO PARA A TABELA ---
+@st.cache_data
+def carregar_dados_calendario():
+    """Carrega a base de calendário com feriados e datas especiais."""
+    try:
+        df = pd.read_excel('data/base_calendario_feriados.xlsx')
+        df['data'] = pd.to_datetime(df['data'])
+        return df
+    except FileNotFoundError:
+        st.error("Arquivo 'base_calendario_feriados.xlsx' não encontrado na pasta 'data'. Este arquivo é necessário para a Análise Sazonal.")
+        return pd.DataFrame()
+    except Exception as e:
+        st.error(f"Ocorreu um erro ao carregar os dados do calendário: {e}")
+        return pd.DataFrame()
+
 def colorir_percentual(val):
     """Retorna a cor para o valor percentual."""
     if pd.isna(val) or val == 0:
@@ -599,26 +622,19 @@ def formatar_seta_percentual(val):
 def calcular_cagr(valor_inicial, valor_final, num_anos):
     """Calcula a Taxa de Crescimento Anual Composta (CAGR)."""
     if isinstance(valor_inicial, pd.Series):
-        # Vectorized calculation for Series
-        # Default to NA
         cagr = pd.Series(np.nan, index=valor_inicial.index, dtype='float64')
         if num_anos < 3:
             return cagr
 
-        # Create a mask for valid calculations
         mask = (valor_inicial.notna()) & (valor_final.notna()) & (valor_inicial != 0)
 
-        # Apply calculation only on the valid subset
-        # Use .loc to ensure we're modifying the Series correctly
         cagr.loc[mask] = ((valor_final[mask] / valor_inicial[mask]) ** (1 / (num_anos - 1)) - 1) * 100
         return cagr
     else:
-        # Scalar calculation (original logic)
         if pd.isna(valor_inicial) or pd.isna(valor_final) or valor_inicial == 0 or num_anos < 3:
             return np.nan
         return ((valor_final / valor_inicial) ** (1 / (num_anos - 1)) - 1) * 100
 
-# --- FUNÇÃO PARA CRIAR A TABELA CONSOLIDADA ---
 def criar_tabela_consolidada(df, coluna_agrupamento, nome_agrupamento):
     """Cria uma tabela consolidada com dados de crimes por [agrupamento]."""
     df_agrupado = df.groupby([coluna_agrupamento, 'fato_comunicado', 'ano']).size().reset_index(name='total_crime')
@@ -638,7 +654,6 @@ def criar_tabela_consolidada(df, coluna_agrupamento, nome_agrupamento):
     
     anos_int = sorted([col for col in df_pivot.columns if isinstance(col, int)])
     
-    # Excluir o ano corrente do cálculo do CAGR
     ano_corrente = pd.Timestamp.now().year
     anos_para_cagr = [ano for ano in anos_int if ano != ano_corrente]
 
@@ -668,13 +683,11 @@ def criar_tabela_consolidada(df, coluna_agrupamento, nome_agrupamento):
     
     return df_consolidado
 
-# --- FUNÇÃO PARA CRIAR A TABELA CONSOLIDADA DE TOTAIS ---
 def criar_tabela_total_consolidada(df):
     """Cria uma tabela consolidada com o total de crimes por tipo."""
     df_agrupado = df.groupby(['fato_comunicado', 'ano']).size().reset_index(name='total_crime')
     df_pivot = df_agrupado.pivot_table(index='fato_comunicado', columns='ano', values='total_crime', fill_value=0)
     
-    # Garante que todas as colunas de ano sejam inteiros, se possível
     anos_existentes = [col for col in df_pivot.columns if isinstance(col, (int, float))]
     if anos_existentes:
         anos_todos = range(int(min(anos_existentes)), int(max(anos_existentes)) + 1)
@@ -693,13 +706,11 @@ def criar_tabela_total_consolidada(df):
             ano_anterior = anos[i-1]
             coluna_evolucao = f'Diferença {ano_anterior}-{ano_atual}'
             
-            # Evita a divisão por zero
             denominador = df_pivot[ano_anterior].replace(0, pd.NA)
             df_pivot[coluna_evolucao] = (df_pivot[ano_atual] - df_pivot[ano_anterior]) / denominador * 100
 
     anos_int = sorted([col for col in df_pivot.columns if isinstance(col, int)])
     
-    # Excluir o ano corrente do cálculo do CAGR
     ano_corrente = pd.Timestamp.now().year
     anos_para_cagr = [ano for ano in anos_int if ano != ano_corrente]
 
@@ -728,7 +739,6 @@ def criar_tabela_total_consolidada(df):
     
     return df_consolidado
 
-# --- FUNÇÃO PARA CRIAR A TABELA POPULACIONAL AGRUPADA ---
 def criar_tabela_populacional_agrupada(df_crimes, df_pop, df_regioes, agrupamento, num_anos):
     """Cria uma tabela de análise populacional, permitindo o agrupamento por diferentes níveis."""
     
@@ -757,25 +767,20 @@ def criar_tabela_populacional_agrupada(df_crimes, df_pop, df_regioes, agrupament
         "Associação": "associacao"
     }[agrupamento]
 
-    # Agrupar crimes
     crimes_agrupado = df_crimes[coluna_agrupamento].value_counts().reset_index()
     crimes_agrupado.columns = [coluna_agrupamento, 'total_fatos']
 
-    # Agrupar população
     if agrupamento == "Município":
         pop_agrupada = df_pop_com_regioes[[coluna_agrupamento, 'populacao_feminina']]
     else:
         pop_agrupada = df_pop_com_regioes.groupby(coluna_agrupamento)['populacao_feminina'].sum().reset_index()
 
-    # Juntar dados
     df_agregado = pd.merge(crimes_agrupado, pop_agrupada, on=coluna_agrupamento, how='left')
 
-    # Calcular métricas
     df_agregado['media_anual_fatos'] = df_agregado['total_fatos'] / num_anos
     df_agregado['taxa_por_mil_mulheres'] = ((df_agregado['media_anual_fatos'] / df_agregado['populacao_feminina']) * 1000).fillna(0)
     df_agregado['percentual_mulheres_vitimas'] = ((df_agregado['media_anual_fatos'] / df_agregado['populacao_feminina']) * 100).fillna(0)
 
-    # Formatar tabela final
     tabela_final = df_agregado.rename(columns={
         coluna_agrupamento: agrupamento,
         'populacao_feminina': 'População Feminina',
@@ -787,7 +792,6 @@ def criar_tabela_populacional_agrupada(df_crimes, df_pop, df_regioes, agrupament
     return tabela_final[[agrupamento, 'População Feminina', 'Média Anual de Fatos Ocorridos', 'Fatos por Mil Mulheres (anual)', '% de Mulheres Vítimas (anual)']].set_index(agrupamento)
 
 
-# --- NOVAS FUNÇÕES PARA TABELA DE FEMINICÍDIO ---
 def criar_tabela_feminicidio_agrupado(df, coluna_agrupamento, nome_agrupamento):
     """Cria uma tabela consolidada com dados de feminicídios por [agrupamento]."""
     df_agrupado = df.groupby([coluna_agrupamento, 'ano']).size().reset_index(name='total_crime')
@@ -815,7 +819,6 @@ def criar_tabela_feminicidio_agrupado(df, coluna_agrupamento, nome_agrupamento):
 
     anos_int = sorted([col for col in df_pivot.columns if isinstance(col, int)])
     
-    # Excluir o ano corrente do cálculo do CAGR
     ano_corrente = pd.Timestamp.now().year
     anos_para_cagr = [ano for ano in anos_int if ano != ano_corrente]
 
@@ -875,7 +878,6 @@ def criar_tabela_total_feminicidio(df):
 
     anos_int = sorted([col for col in df_pivot.columns if isinstance(col, int)])
     
-    # Excluir o ano corrente do cálculo do CAGR
     ano_corrente = pd.Timestamp.now().year
     anos_para_cagr = [ano for ano in anos_int if ano != ano_corrente]
 
@@ -944,29 +946,29 @@ def carregar_dados_populacao():
         st.error(f"Ocorreu um erro ao carregar os dados da população: {e}")
         return pd.DataFrame()
 
-# Carregar os dados
 geojson_sc = carregar_geojson_sc()
 df_geral = carregar_dados_gerais()
 df_feminicidio = carregar_dados_feminicidio()
 df_populacao = carregar_dados_populacao()
 df_regioes = carregar_dados_regioes()
+df_calendario = carregar_dados_calendario()
 
 
-# --- BARRA LATERAL (SIDEBAR) ---
 st.sidebar.image("logo_ovm.jpeg", use_container_width=True)
 
-# --- ESTRUTURA COM ABAS (TABS) ---
-tab_geral, tab_feminicidio, tab_letalidade, tab_vulnerabilidade, tab_glossario, tab_download = st.tabs([
+tab_geral, tab_feminicidio, tab_letalidade, tab_vulnerabilidade, tab_efetividade, tab_contagio, tab_sazonal, tab_glossario, tab_download = st.tabs([
     "📊 Análise Geral", 
     "🚨 Análise de Feminicídios",
     "📈 Índice de Letalidade",
-    "🎯 Análise de Vulnerabilidade", 
+    "🎯 Análise de Vulnerabilidade",
+    "🔎 Efetividade da Denúncia",
+    "🌐 Contágio Geográfico",
+    "📅 Análise Sazonal",
     "📖 Metodologia e Glossário", 
     "📥 Download de Dados"
 ])
 
-# --- LÓGICA PRINCIPAL DA APLICAÇÃO ---
-if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None and not df_populacao.empty:
+if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None and not df_populacao.empty and not df_calendario.empty:
     with st.sidebar:
         st.header("⚙️ Filtros de Análise")
         
@@ -990,7 +992,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             help="Selecione a data de fim do período."
         )
         
-        # --- CÁLCULO DE MÉTRICAS PARA FILTROS POPULACIONAIS ---
         df_geral_filtrado_por_data = df_geral[
             (df_geral['data_fato'].dt.date >= data_inicial) &
             (df_geral['data_fato'].dt.date <= data_final)
@@ -1123,8 +1124,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             help="Escolha como os dados devem ser agrupados nos gráficos e tabelas."
         )
     
-
-    # Botão para resetar filtros
     st.sidebar.markdown("---")
     if st.sidebar.button("🔄 Resetar Todos os Filtros", use_container_width=True):
         st.rerun()
@@ -1163,7 +1162,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
         (df_feminicidio['municipio_normalizado'].isin(municipios_filtrados_populacao))
     ]
 
-    # --- ABA 1: ANÁLISE GERAL ---
     with tab_geral:
         st.header("Violência Contra a Mulher em Santa Catarina")
         st.markdown("Visão geral dos registros de ocorrências.")
@@ -1173,26 +1171,21 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
         if not df_geral_filtrado.empty and df_geral_filtrado['idade_vitima'].notna().any():
             media_idade_vitima = df_geral_filtrado['idade_vitima'].mean()
 
-        # Calcular o número de dias no período selecionado
         num_dias = (data_final - data_inicial).days + 1
         
-        # Calcular KPIs de crimes por dia e por hora
         crimes_por_dia = total_registros / num_dias if num_dias > 0 else 0
         crimes_por_hora = total_registros / (num_dias * 24) if num_dias > 0 else 0
         
-        # --- CÁLCULO E EXIBIÇÃO DO CAGR ---
         df_cagr_kpi = df_geral_filtrado[df_geral_filtrado['ano'] != pd.Timestamp.now().year]
         anos_unicos = sorted(df_cagr_kpi['ano'].unique())
         num_anos_total = len(anos_unicos)
 
         if num_anos_total >= 3:
             col1, col2, col3 = st.columns(3)
-            # KPI: Total de Registros
             with col1:
                 st.metric(label="Total de Registros no Período", value=f"{total_registros:,}".replace(",", "."))
                 st.metric(label="Média de Crimes por Dia", value=f"{crimes_por_dia:.1f}")
 
-            # KPI: CAGR
             with col2:
                 dados_por_ano = df_cagr_kpi.groupby('ano').size()
                 valor_inicial = dados_por_ano.iloc[0]
@@ -1210,7 +1203,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                 
                 st.metric(label="Média de Crimes por Hora", value=f"{crimes_por_hora:.2f}")
 
-            # KPI: Idade Média
             with col3:
                 st.metric(label="Idade Média da Vítima", value=f"{media_idade_vitima:.1f} anos")
         else:
@@ -1226,7 +1218,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
         
         st.subheader(f"Distribuição de Crimes por {agrupamento_selecionado}")
         
-        # --- SELEÇÃO DE VISUALIZAÇÃO DO MAPA ---
         view_type = st.radio(
             "Selecione a visualização do mapa:",
             ("Soma dos Crimes", "Crimes por Mil Mulheres", "% de Mulheres Vítimas"),
@@ -1238,61 +1229,46 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
         color_col = 'value'
         label_text = 'Valor'
 
-        # Determine the column to use for coloring and the label text based on the view type
         if view_type == "Soma dos Crimes":
             color_col = 'quantidade'
             label_text = f'Total de Registros ({agrupamento_selecionado})'
         elif view_type == "Crimes por Mil Mulheres":
             color_col = 'taxa_por_mil_mulheres'
             label_text = f'Crimes por Mil Mulheres ({agrupamento_selecionado})'
-        else: # % de Mulheres Vítimas
+        else:
             color_col = 'percentual_mulheres_vitimas'
             label_text = f'% de Mulheres Vítimas ({agrupamento_selecionado})'
 
-        # --- DATA PREPARATION ---
-
-        # Always start with per-municipality data
         base_map_df = df_geral_filtrado['municipio_normalizado'].value_counts().reset_index()
         base_map_df.columns = ['municipio_normalizado', 'total_fatos']
 
-        # If the view is population-based, calculate the rates
         if view_type != "Soma dos Crimes":
-            # Merge with population data
             base_map_df = pd.merge(base_map_df, df_populacao, on='municipio_normalizado', how='left')
             base_map_df.dropna(subset=['populacao_feminina'], inplace=True)
 
-            # Calculate annual average
             anos_no_filtro = df_geral_filtrado['ano'].unique()
             num_anos = len(anos_no_filtro) if len(anos_no_filtro) > 0 else 1
             base_map_df['media_anual_fatos'] = base_map_df['total_fatos'] / num_anos
 
-            # Calculate the specific rate
             if view_type == "Crimes por Mil Mulheres":
                 base_map_df[color_col] = ((base_map_df['media_anual_fatos'] / base_map_df['populacao_feminina']) * 1000).fillna(0)
-            else: # % de Mulheres Vítimas
+            else:
                 base_map_df[color_col] = ((base_map_df['media_anual_fatos'] / base_map_df['populacao_feminina']) * 100).fillna(0)
         else:
-            # For "Soma dos Crimes", the color column is just the total count
             base_map_df.rename(columns={'total_fatos': color_col}, inplace=True)
-
-
-        # --- AGGREGATION LOGIC ---
 
         if agrupamento_selecionado == "Município" or agrupamento_selecionado == "Consolidado":
             map_df = base_map_df[['municipio_normalizado', color_col]]
-        else: # Mesorregião or Associação
+        else: 
             agrupamento_col = "mesoregiao" if agrupamento_selecionado == "Mesorregião" else "associacao"
             
-            # Add the grouping column to our base data
             municipio_grupo_mapping = df_geral_filtrado[['municipio_normalizado', agrupamento_col]].drop_duplicates()
             df_with_groups = pd.merge(base_map_df, municipio_grupo_mapping, on='municipio_normalizado', how='left')
             
             if view_type == "Soma dos Crimes":
-                # Sum the counts for each group
                 crimes_por_grupo = df_with_groups.groupby(agrupamento_col)[color_col].sum().reset_index()
-                # Map the summed counts back to each municipality in the group
                 map_df = pd.merge(municipio_grupo_mapping, crimes_por_grupo, on=agrupamento_col, how='left').fillna(0)
-            else: # Population-based views need weighted averages for groups
+            else: 
                 grouped_pop = df_with_groups.groupby(agrupamento_col).agg(
                     total_fatos_grupo=('total_fatos', 'sum'),
                     populacao_feminina_grupo=('populacao_feminina', 'sum')
@@ -1309,12 +1285,8 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     
                 map_df = pd.merge(municipio_grupo_mapping, grouped_pop[[agrupamento_col, color_col]], on=agrupamento_col, how='left').fillna(0)
 
-
-        # Ensure map_df only contains municipalities that are part of the current filter
-        # This is a safety measure, though the logic above should already handle it.
         if not map_df.empty:
             map_df = map_df[map_df['municipio_normalizado'].isin(df_geral_filtrado['municipio_normalizado'].unique())]
-
 
         fig_mapa = px.choropleth_mapbox(
             map_df, 
@@ -1331,7 +1303,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
         )
         fig_mapa.update_layout(
             margin={"r":0,"t":0,"l":0,"b":0},
-            coloraxis_showscale=True # Show scale for clarity
+            coloraxis_showscale=True 
         )
         st.plotly_chart(fig_mapa, use_container_width=True)
 
@@ -1541,7 +1513,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     labels={'x': 'Mês', 'y': 'Quantidade'}, template='plotly_white'
                 )
                 fig_mes.update_traces(line_color='#9370DB')
-            else: # Pizza
+            else: 
                 fig_mes = px.pie(
                     registros_por_mes, names='Mês', values='Quantidade', hole=.4,
                     color_discrete_sequence=px.colors.sequential.Purples_r
@@ -1596,11 +1568,9 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
         
         st.subheader("Análise Populacional dos Crimes por Município")
         
-        # Calcular anos no filtro
         anos_no_filtro = df_geral_filtrado['ano'].unique()
         num_anos = len(anos_no_filtro) if len(anos_no_filtro) > 0 else 1
         
-        # Gerar a tabela populacional
         tabela_populacional = criar_tabela_populacional_agrupada(
             df_geral_filtrado, df_populacao, df_regioes, agrupamento_selecionado, num_anos
         )
@@ -1685,8 +1655,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             else:
                 st.warning("Não há dados para exibir na tabela consolidada com os filtros selecionados.")
 
-
-    # --- ABA 2: ANÁLISE DE FEMINICÍDIOS ---
     with tab_feminicidio:
         st.header("Análise de Feminicídios Consumados")
         st.markdown("Indicadores específicos sobre os crimes de feminicídio no estado.")
@@ -1709,20 +1677,16 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
 
         st.subheader(f"Distribuição de Feminicídios por {agrupamento_selecionado}")
 
-        # Adaptar a lógica do mapa para feminicídios
         if agrupamento_selecionado == "Município" or agrupamento_selecionado == "Consolidado":
             map_df_fem = df_feminicidio_filtrado['municipio_normalizado'].value_counts().reset_index()
             map_df_fem.columns = ['municipio_normalizado', 'quantidade']
-        else: # Mesorregião or Associação
+        else: 
             agrupamento_col_fem = "mesoregiao" if agrupamento_selecionado == "Mesorregião" else "associacao"
             
-            # Calcular totais de feminicídios por grupo
             feminicidios_por_grupo = df_feminicidio_filtrado.groupby(agrupamento_col_fem).size().reset_index(name='quantidade_grupo')
             
-            # Mapeamento de municípios para o grupo
             municipio_grupo_mapping_fem = df_feminicidio_filtrado[['municipio_normalizado', agrupamento_col_fem]].drop_duplicates()
             
-            # Mesclar os totais do grupo de volta para os municípios
             map_df_fem = pd.merge(municipio_grupo_mapping_fem, feminicidios_por_grupo, on=agrupamento_col_fem)
             map_df_fem = map_df_fem.rename(columns={'quantidade_grupo': 'quantidade'})
 
@@ -1732,7 +1696,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             locations='municipio_normalizado',
             featureidkey="properties.NM_MUN_NORMALIZADO", 
             color='quantidade',
-            color_continuous_scale="Reds", # Usar uma escala de cor diferente para distinguir
+            color_continuous_scale="Reds", 
             mapbox_style="carto-positron",
             zoom=6, 
             center={"lat": -27.59, "lon": -50.52}, 
@@ -1747,7 +1711,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
 
         st.markdown("---")
         
-        # --- NOVA SEÇÃO: RAIO-X DO AGRESSOR ---
         st.subheader("Raio-X do Agressor")
         st.markdown("""
         Análise aprofundada sobre o perfil do agressor, incluindo a dinâmica de idade com a vítima e seu histórico criminal. 
@@ -1909,7 +1872,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             st.plotly_chart(fig_meio, use_container_width=True)
         st.markdown("---")
         
-        # --- LINHA 1 DE GRÁFICOS ---
         col_graf_fem1, col_graf_fem2 = st.columns(2)
         with col_graf_fem1:
             st.subheader("Distribuição de Idade da Vítima")
@@ -1925,7 +1887,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     labels={'idade_vitima': 'Idade da Vítima', 'count': 'Quantidade'},
                     template='plotly_white', color_discrete_sequence=['#8e24aa']
                 )
-            else: # Gráfico de Densidade
+            else: 
                 fig_idade_vitima = px.violin(
                     df_idade_vitima, y='idade_vitima',
                     labels={'idade_vitima': 'Idade da Vítima'},
@@ -1948,7 +1910,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     labels={'idade_autor': 'Idade do Autor', 'count': 'Quantidade'},
                     template='plotly_white', color_discrete_sequence=['#ab47bc']
                 )
-            else: # Gráfico de Densidade
+            else:
                 fig_idade_autor = px.violin(
                     df_idade_autor, y='idade_autor',
                     labels={'idade_autor': 'Idade do Autor'},
@@ -1959,7 +1921,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
 
         st.markdown("---")
 
-        # --- LINHA 2 DE GRÁFICOS ---
         col_graf_fem3, col_graf_fem4 = st.columns(2)
         with col_graf_fem3:
             st.subheader("Vítima Possuía B.O. contra o Autor?")
@@ -2009,7 +1970,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
         
         st.markdown("---")
         
-        # --- LINHA 3 DE GRÁFICOS ---
         st.subheader("Localidade do Crime")
         chart_type_localidade = st.selectbox(
             "Tipo de Gráfico",
@@ -2049,7 +2009,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
         
         st.markdown("---")
 
-        # --- LINHA 4 DE GRÁFICOS ---
         col_graf_fem5, col_graf_fem6 = st.columns(2)
         with col_graf_fem5:
             st.subheader("Autor com Registro de B.O.?")
@@ -2075,7 +2034,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
 
         with col_graf_fem6:
             st.subheader("Autor com B.O. por Violência Doméstica?")
-            # --- CÓDIGO MAIS ROBUSTO ADICIONADO ---
             if 'passagem_por_violencia_domestica' in df_feminicidio_filtrado.columns:
                 chart_type_autor_bo_vd = st.selectbox(
                     "Tipo de Gráfico",
@@ -2085,7 +2043,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                 autor_bo_vd = df_feminicidio_filtrado['passagem_por_violencia_domestica'].value_counts().reset_index()
                 autor_bo_vd.columns = ['Resposta', 'Quantidade']
                 
-                # Garante que há dados para plotar
                 if not autor_bo_vd.empty:
                     if chart_type_autor_bo_vd == "Barras":
                         fig_autor_bo_vd = px.bar(
@@ -2106,7 +2063,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
 
         st.markdown("---")
 
-        # --- LINHA 5 DE GRÁFICOS ---
         st.subheader("Quantidade de Feminicídios por Mês/Ano")
         chart_type_fem_mes_ano = st.selectbox(
             "Tipo de Gráfico",
@@ -2156,7 +2112,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
         
         st.markdown("---")
 
-        # --- LINHA 6 DE GRÁFICOS ---
         st.subheader("Quantidade de Feminicídios por Ano")
         chart_type_fem_ano = st.selectbox(
             "Tipo de Gráfico",
@@ -2265,7 +2220,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             else:
                 st.warning("Não há dados para exibir na tabela de feminicídios com os filtros selecionados.")
 
-# --- ABA 3: ÍNDICE DE LETALIDADE ---
 with tab_letalidade:
     st.header("Índice de Letalidade da Violência")
     st.markdown("""
@@ -2273,9 +2227,9 @@ with tab_letalidade:
 
     Este índice diferencia o volume de denúncias da **falha fatal do sistema de prevenção**. Um município pode ter poucas denúncias, mas uma alta taxa de letalidade, indicando um problema gravíssimo e silencioso. O índice é calculado como:
     
-    `Índice = (Total de Feminicídios / (Total de Ocorrências de Violência + Total de Feminicídios)) * 10.000`
+    `Índice = (Total de Feminicídios / (Total de Ocorrências de Violência + Total de Feminicídios)) * 100`
 
-    Isso representa: *"Para cada 10.000 ocorrências de violência contra a mulher, X resultam em morte."*
+    Isso representa: *"Para cada 100 ocorrências de violência contra a mulher, X resultam em morte."*
     """)
     
     # O agrupamento "Consolidado" não faz sentido para este índice, pois queremos comparar localidades.
@@ -2290,19 +2244,15 @@ with tab_letalidade:
         else:
             st.subheader(f"Mapa Coroplético do Índice de Letalidade por {agrupamento_selecionado}")
 
-            # Preparar dados para o mapa
             if agrupamento_selecionado == "Município":
                 map_df_letalidade = df_letalidade_calculado.rename(columns={'localidade': 'municipio_normalizado'})
-            else: # Mesorregião ou Associação
-                # Mapear o valor do índice do grupo para cada município pertencente ao grupo
+            else: 
                 mapa_grupo_para_indice = df_letalidade_calculado.set_index('localidade')['indice_letalidade']
                 
                 coluna_agrupamento = "mesoregiao" if agrupamento_selecionado == "Mesorregião" else "associacao"
                 
-                # Pegar a lista de municípios únicos do filtro atual
                 municipios_no_filtro = df_geral_filtrado[['municipio_normalizado', coluna_agrupamento]].drop_duplicates()
                 
-                # Mapear o índice
                 municipios_no_filtro['indice_letalidade'] = municipios_no_filtro[coluna_agrupamento].map(mapa_grupo_para_indice)
                 map_df_letalidade = municipios_no_filtro.fillna(0)
 
@@ -2312,12 +2262,12 @@ with tab_letalidade:
                 locations='municipio_normalizado',
                 featureidkey="properties.NM_MUN_NORMALIZADO", 
                 color='indice_letalidade',
-                color_continuous_scale="OrRd", # Laranja para Vermelho indica perigo
+                color_continuous_scale="OrRd", 
                 mapbox_style="carto-positron",
                 zoom=6, 
                 center={"lat": -27.59, "lon": -50.52}, 
                 opacity=0.7,
-                labels={'indice_letalidade': f'Índice de Letalidade (a cada 10.000 eventos)'}
+                labels={'indice_letalidade': f'Índice de Letalidade (a cada 100 eventos)'}
             )
             fig_mapa_letalidade.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
             st.plotly_chart(fig_mapa_letalidade, use_container_width=True)
@@ -2354,34 +2304,26 @@ with tab_letalidade:
         **A grande questão:** O perfil da violência muda drasticamente conforme a idade da vítima?
         """)
 
-        # --- GRÁFICO DE BARRAS 100% EMPILHADO ---
         st.subheader("Visualização da Distribuição de Crimes por Faixa Etária")
         
-        # 1. Preparar os dados
         df_vulnerabilidade = df_geral_filtrado.dropna(subset=['idade_vitima']).copy()
         bins = [0, 12, 17, 29, 40, 50, 60, 70, 79, 120]
         labels = ['0-12 anos', '13-17 anos', '18-29 anos', '30-40 anos', '41-50 anos', '51-60 anos', '61-70 anos', '71-79 anos', '80+ anos']
         df_vulnerabilidade['faixa_etaria'] = pd.cut(df_vulnerabilidade['idade_vitima'], bins=bins, labels=labels, right=True)
 
-        # 2. Calcular a distribuição percentual
         if not df_vulnerabilidade.empty:
-            # Agrupar por faixa etária e tipo de crime
             crime_counts = df_vulnerabilidade.groupby(['faixa_etaria', 'fato_comunicado']).size().unstack(fill_value=0)
             
-            # Calcular o percentual (normalizar por linha)
             crime_percentages = crime_counts.div(crime_counts.sum(axis=1), axis=0) * 100
             
-            # Resetar o índice para que 'faixa_etaria' se torne uma coluna
             crime_percentages = crime_percentages.reset_index()
             
-            # Transformar de formato wide para long para o Plotly
             df_plot = crime_percentages.melt(
                 id_vars='faixa_etaria', 
                 var_name='fato_comunicado', 
                 value_name='percentual'
             )
 
-            # 3. Criar o gráfico
             fig_barras_vulnerabilidade = px.bar(
                 df_plot,
                 x='faixa_etaria',
@@ -2402,14 +2344,12 @@ with tab_letalidade:
 
         st.markdown("---")
 
-        # --- TABELA DE HEATMAP ---
         st.subheader("Análise de Concentração: Heatmap de Crimes por Faixa Etária")
         st.markdown("""
         O heatmap abaixo mostra a concentração de tipos de crime em cada faixa etária. Células mais escuras indicam uma maior concentração (em números absolutos), destacando quais crimes são mais prevalentes em determinados períodos da vida da mulher.
         """)
 
         if not df_vulnerabilidade.empty:
-            # Reutilizando df_vulnerabilidade já calculado
             crime_counts_heatmap = df_vulnerabilidade.groupby(['faixa_etaria', 'fato_comunicado']).size().unstack(fill_value=0)
             
             fig_heatmap = go.Figure(data=go.Heatmap(
@@ -2429,6 +2369,300 @@ with tab_letalidade:
         else:
             st.warning("Não há dados suficientes para gerar o heatmap com os filtros selecionados.")
 
+    with tab_efetividade:
+        st.header("Índice de Efetividade da Denúncia")
+        st.markdown("""
+        **A Grande Pergunta:** Em um município, um alto número de denúncias de crimes "menores" (como ameaça) está correlacionado a um menor número de crimes graves (lesão corporal, feminicídio)? Ou seja, a denúncia está funcionando como um mecanismo de prevenção eficaz?
+
+        Este é um proxy para medir a efetividade da resposta do sistema de segurança e apoio. Um sistema eficaz deveria intervir após a primeira denúncia, impedindo a escalada da violência.
+        """)
+
+        crimes_leves = ["Ameaça", "Vias de Fato"]
+        crimes_graves = ["Lesão Corporal Dolosa", "Estupro", "Feminicídio"]
+
+        if not df_geral_filtrado.empty and not df_populacao.empty:
+            df_leves = df_geral_filtrado[df_geral_filtrado['fato_comunicado'].isin(crimes_leves)]
+            contagem_leves = df_leves.groupby('municipio_normalizado').size().reset_index(name='total_crimes_leves')
+
+            df_graves = df_geral_filtrado[df_geral_filtrado['fato_comunicado'].isin(crimes_graves)]
+            contagem_graves = df_graves.groupby('municipio_normalizado').size().reset_index(name='total_crimes_graves')
+
+            df_efetividade = pd.merge(contagem_leves, contagem_graves, on='municipio_normalizado', how='outer').fillna(0)
+
+            df_efetividade = pd.merge(df_efetividade, df_populacao[['municipio_normalizado', 'municipio', 'populacao_feminina']], on='municipio_normalizado', how='left')
+            df_efetividade.dropna(subset=['populacao_feminina', 'municipio'], inplace=True)
+            df_efetividade = df_efetividade[df_efetividade['populacao_feminina'] > 0]
+
+            df_efetividade['taxa_crimes_leves'] = (df_efetividade['total_crimes_leves'] / df_efetividade['populacao_feminina']) * 1000
+            df_efetividade['taxa_crimes_graves'] = (df_efetividade['total_crimes_graves'] / df_efetividade['populacao_feminina']) * 1000
+
+            st.subheader("Gráfico de Dispersão: Relação entre Denúncias Leves e Ocorrências Graves")
+            fig_efetividade = px.scatter(
+                df_efetividade,
+                x='taxa_crimes_leves',
+                y='taxa_crimes_graves',
+                hover_name='municipio',
+                hover_data={
+                    'total_crimes_leves': ':.0f',
+                    'total_crimes_graves': ':.0f',
+                    'populacao_feminina': ':.0f',
+                    'municipio': False
+                },
+                trendline="ols",  
+                labels={
+                    'taxa_crimes_leves': 'Taxa de Crimes Leves (por 1.000 mulheres)',
+                    'taxa_crimes_graves': 'Taxa de Crimes Graves (por 1.000 mulheres)'
+                },
+                title="Efetividade da Denúncia: Crimes Leves vs. Graves por Município"
+            )
+            fig_efetividade.update_traces(marker=dict(size=10, opacity=0.7, color='#8e24aa'))
+            st.plotly_chart(fig_efetividade, use_container_width=True)
+
+            st.markdown("---")
+            st.subheader("Como Interpretar o Gráfico")
+            st.markdown("""
+            - **Correlação Negativa (Pontos formam uma linha que desce da esquerda para a direita):** Cenário Ideal. Municípios onde as mulheres denunciam mais os crimes leves tendem a ter menos crimes graves. Isso sugere que a denúncia e a intervenção precoce estão funcionando.
+            - **Correlação Positiva (Pontos formam uma linha que sobe):** Pior Cenário. Municípios com muitas denúncias leves também têm muitos crimes graves. Isso pode indicar um sistema que apenas registra as ocorrências, mas falha em proteger a vítima e impedir a escalada da violência.
+            - **Sem Correlação (Nuvem de pontos dispersa):** Indica que a relação não é direta e outros fatores (socioeconômicos, culturais) são mais determinantes.
+            """)
+            st.info("Este insight não mede apenas o crime, mas tenta avaliar a resposta do ecossistema de proteção. Ele gera hipóteses sobre a efetividade da polícia, medidas protetivas e redes de apoio, apontando para municípios que podem precisar de uma auditoria em seus processos de atendimento à mulher.")
+
+        else:
+            st.warning("Não há dados suficientes para gerar a análise de efetividade com os filtros selecionados.")
+
+    with tab_contagio:
+        st.header("Análise de Contágio Geográfico (Hotspots de Vizinhança)")
+        st.markdown("""
+        **A Grande Pergunta:** A violência em um município é um fenômeno isolado ou é influenciada pela situação de seus vizinhos? Existem "clusters" regionais de violência que transcendem as fronteiras municipais?
+
+        Esta análise trata a violência como um fenômeno que pode se "espalhar" ou se concentrar em microrregiões, requerendo soluções coordenadas entre múltiplos municípios.
+        """)
+        
+        if not df_geral_filtrado.empty and not df_populacao.empty:
+            mapa_vizinhos = mapear_vizinhos(geojson_sc)
+
+            crimes_por_municipio = df_geral_filtrado['municipio_normalizado'].value_counts().reset_index()
+            crimes_por_municipio.columns = ['municipio_normalizado', 'total_fatos']
+
+            df_taxas = pd.merge(crimes_por_municipio, df_populacao[['municipio_normalizado', 'municipio', 'populacao_feminina']], on='municipio_normalizado', how='left')
+            df_taxas.dropna(subset=['populacao_feminina', 'municipio'], inplace=True)
+            df_taxas = df_taxas[df_taxas['populacao_feminina'] > 0]
+            
+            anos_no_filtro = df_geral_filtrado['ano'].unique()
+            num_anos = len(anos_no_filtro) if len(anos_no_filtro) > 0 else 1
+            media_anual_fatos = df_taxas['total_fatos'] / num_anos
+
+            df_taxas['taxa_propria'] = (media_anual_fatos / df_taxas['populacao_feminina']) * 1000
+
+            taxa_por_municipio_map = df_taxas.set_index('municipio_normalizado')['taxa_propria']
+            
+            taxas_vizinhanca = []
+            for municipio in df_taxas['municipio_normalizado']:
+                vizinhos = mapa_vizinhos.get(municipio, [])
+                if vizinhos:
+                    taxas_dos_vizinhos = taxa_por_municipio_map.reindex(vizinhos).dropna()
+                    if not taxas_dos_vizinhos.empty:
+                        taxas_vizinhanca.append(taxas_dos_vizinhos.mean())
+                    else:
+                        taxas_vizinhanca.append(0)
+                else:
+                    taxas_vizinhanca.append(0)
+            
+            df_taxas['taxa_vizinhanca'] = taxas_vizinhanca
+
+            st.subheader("Gráfico de Dispersão: Taxa de Violência Própria vs. Vizinhança")
+            
+            media_propria = df_taxas['taxa_propria'].mean()
+            media_vizinhanca = df_taxas['taxa_vizinhanca'].mean()
+
+            fig_contagio = px.scatter(
+                df_taxas,
+                x='taxa_propria',
+                y='taxa_vizinhanca',
+                hover_name='municipio',
+                hover_data={'taxa_propria': ':.2f', 'taxa_vizinhanca': ':.2f', 'municipio': False},
+                labels={
+                    'taxa_propria': 'Taxa de Violência do Próprio Município (por mil mulheres)',
+                    'taxa_vizinhanca': 'Taxa Média de Violência da Vizinhança (por mil mulheres)'
+                },
+                title="Análise de Hotspots: Violência Local vs. Influência da Vizinhança"
+            )
+
+            fig_contagio.add_vline(x=media_propria, line_width=1, line_dash="dash", line_color="gray")
+            fig_contagio.add_hline(y=media_vizinhanca, line_width=1, line_dash="dash", line_color="gray")
+
+            max_x = df_taxas['taxa_propria'].max() * 1.05
+            max_y = df_taxas['taxa_vizinhanca'].max() * 1.05
+            fig_contagio.add_annotation(x=media_propria, y=max_y, text="Municípios em Risco", showarrow=False, xanchor='center', yanchor='top', font=dict(color="orange"))
+            fig_contagio.add_annotation(x=max_x, y=max_y, text="Hotspots (Alto-Alto)", showarrow=False, xanchor='right', yanchor='top', font=dict(color="red"))
+            fig_contagio.add_annotation(x=0, y=0, text="Pontos Frios (Baixo-Baixo)", showarrow=False, xanchor='left', yanchor='bottom', font=dict(color="green"))
+            fig_contagio.add_annotation(x=max_x, y=0, text="Ilhas de Violência", showarrow=False, xanchor='right', yanchor='bottom', font=dict(color="purple"))
+            
+            fig_contagio.update_traces(marker=dict(size=10, opacity=0.7, color='#8e24aa'))
+            st.plotly_chart(fig_contagio, use_container_width=True)
+
+            st.markdown("---")
+            st.subheader("Como Interpretar os Quadrantes")
+            st.markdown("""
+            - **🔴 Hotspots (Superior Direito):** Municípios com alta violência, cercados por vizinhos também com alta violência. Indicam um *cluster* geográfico de risco que exige ações regionais coordenadas.
+            - **🟠 Municípios em Risco (Superior Esquerdo):** Baixa violência interna, mas cercados por vizinhos violentos. Estão em risco de "contágio" ou "transbordamento" da violência. Ações preventivas são cruciais aqui.
+            - **🟣 Ilhas de Violência (Inferior Direito):** Alta violência interna, mas cercados por vizinhos mais pacíficos. O problema é mais localizado e pode estar ligado a fatores específicos do município.
+            - **🟢 Pontos Frios (Inferior Esquerdo):** Baixa violência, cercados por vizinhos também com baixa violência. São áreas de resiliência que podem oferecer *insights* sobre políticas públicas eficazes.
+            """)
+        else:
+            st.warning("Não há dados suficientes para gerar a Análise de Contágio Geográfico com os filtros selecionados.")
+    
+    with tab_sazonal:
+        st.header("Sazonalidade e Eventos-Chave: O Calendário do Risco")
+        st.markdown("""
+        **A Grande Pergunta:** A violência contra a mulher aumenta de forma previsível em torno de datas ou eventos específicos (feriados, fins de semana prolongados, períodos de férias)?
+        
+        Esta análise vai além do gráfico mensal, investigando micro-padrões temporais que podem orientar ações de segurança e campanhas de conscientização.
+        """)
+
+        df_geral_filtrado['dia_semana'] = df_geral_filtrado['data_fato'].dt.day_name()
+        df_geral_filtrado['mes'] = df_geral_filtrado['data_fato'].dt.month_name()
+
+        if not df_geral_filtrado.empty:
+            st.subheader("Impacto de Feriados e Fins de Semana na Média Diária de Ocorrências")
+
+            df_geral_filtrado_sazonal = df_geral_filtrado.copy()
+            df_geral_filtrado_sazonal['data_fato_date'] = df_geral_filtrado_sazonal['data_fato'].dt.date
+            df_calendario['data_fato_date'] = df_calendario['data'].dt.date
+
+            df_geral_filtrado_sazonal = pd.merge(
+                df_geral_filtrado_sazonal,
+                df_calendario[['data_fato_date', 'is_feriado', 'is_fim_de_semana', 'is_vespera_feriado', 'is_pos_feriado']],
+                on='data_fato_date',
+                how='left'
+            )
+            df_geral_filtrado_sazonal[['is_feriado', 'is_vespera_feriado', 'is_pos_feriado']] = df_geral_filtrado_sazonal[['is_feriado', 'is_vespera_feriado', 'is_pos_feriado']].fillna(False)
+
+            datas_periodo_filtrado = pd.date_range(start=data_inicial, end=data_final)
+            df_periodo_completo = pd.DataFrame(datas_periodo_filtrado, columns=['data'])
+            df_periodo_completo['data_fato_date'] = df_periodo_completo['data'].dt.date
+
+            df_periodo_completo_com_eventos = pd.merge(
+                df_periodo_completo,
+                df_calendario[['data_fato_date', 'is_feriado', 'is_fim_de_semana', 'is_vespera_feriado', 'is_pos_feriado']],
+                on='data_fato_date',
+                how='left'
+            )
+            df_periodo_completo_com_eventos.fillna(False, inplace=True)
+
+            total_dias_feriado = df_periodo_completo_com_eventos['is_feriado'].sum()
+            total_dias_vespera = df_periodo_completo_com_eventos['is_vespera_feriado'].sum()
+            total_dias_pos = df_periodo_completo_com_eventos['is_pos_feriado'].sum()
+            total_dias_fds = df_periodo_completo_com_eventos['is_fim_de_semana'].sum()
+            total_dias_uteis_comuns = len(df_periodo_completo_com_eventos[
+                (df_periodo_completo_com_eventos['is_feriado'] == False) &
+                (df_periodo_completo_com_eventos['is_fim_de_semana'] == False) &
+                (df_periodo_completo_com_eventos['is_vespera_feriado'] == False) &
+                (df_periodo_completo_com_eventos['is_pos_feriado'] == False)
+            ])
+
+            ocorrencias_feriado = df_geral_filtrado_sazonal['is_feriado'].sum()
+            ocorrencias_vespera = df_geral_filtrado_sazonal['is_vespera_feriado'].sum()
+            ocorrencias_pos = df_geral_filtrado_sazonal['is_pos_feriado'].sum()
+            ocorrencias_fds = df_geral_filtrado_sazonal['is_fim_de_semana'].sum()
+            ocorrencias_uteis_comuns = len(df_geral_filtrado_sazonal[
+                (df_geral_filtrado_sazonal['is_feriado'] == False) &
+                (df_geral_filtrado_sazonal['is_fim_de_semana'] == False) &
+                (df_geral_filtrado_sazonal['is_vespera_feriado'] == False) &
+                (df_geral_filtrado_sazonal['is_pos_feriado'] == False)
+            ])
+
+            media_feriado = (ocorrencias_feriado / total_dias_feriado) if total_dias_feriado > 0 else 0
+            media_vespera = (ocorrencias_vespera / total_dias_vespera) if total_dias_vespera > 0 else 0
+            media_pos = (ocorrencias_pos / total_dias_pos) if total_dias_pos > 0 else 0
+            media_fds = (ocorrencias_fds / total_dias_fds) if total_dias_fds > 0 else 0
+            media_uteis_comuns = (ocorrencias_uteis_comuns / total_dias_uteis_comuns) if total_dias_uteis_comuns > 0 else 0
+            
+            df_medias = pd.DataFrame({
+                'Tipo de Dia': ['Dia Útil Comum', 'Fim de Semana', 'Véspera de Feriado', 'Feriado', 'Pós-Feriado'],
+                'Média Diária de Ocorrências': [media_uteis_comuns, media_fds, media_vespera, media_feriado, media_pos]
+            }).sort_values('Média Diária de Ocorrências', ascending=False)
+            
+            fig_barras_sazonal = px.bar(
+                df_medias,
+                x='Tipo de Dia',
+                y='Média Diária de Ocorrências',
+                text='Média Diária de Ocorrências',
+                title="Média de Ocorrências por Tipo de Dia",
+                labels={'Média Diária de Ocorrências': 'Média de Ocorrências por Dia', 'Tipo de Dia': ''},
+                template='plotly_white'
+            )
+            fig_barras_sazonal.update_traces(
+                marker_color='#8e24aa',
+                texttemplate='%{text:.2f}',
+                textposition='outside'
+            )
+            st.plotly_chart(fig_barras_sazonal, use_container_width=True)
+
+            st.markdown("---")
+
+            st.subheader("Heatmap de Risco: Dia da Semana vs. Mês")
+            st.markdown("A cor de cada célula representa a quantidade média de crimes, destacando os períodos mais 'quentes' do ano.")
+            
+            datas_periodo_filtrado_hm = pd.to_datetime(pd.date_range(start=data_inicial, end=data_final))
+
+            df_periodo_completo_hm = pd.DataFrame(datas_periodo_filtrado_hm, columns=['data_fato'])
+            df_periodo_completo_hm['mes'] = df_periodo_completo_hm['data_fato'].dt.month_name()
+            df_periodo_completo_hm['dia_semana'] = df_periodo_completo_hm['data_fato'].dt.day_name()
+
+            contagem_dias_hm = df_periodo_completo_hm.groupby(['mes', 'dia_semana']).size().reset_index(name='total_dias_no_periodo')
+
+            ocorrencias_hm = df_geral_filtrado.groupby(['mes', 'dia_semana']).size().reset_index(name='total_ocorrencias')
+
+            df_media_hm = pd.merge(
+                contagem_dias_hm,
+                ocorrencias_hm,
+                on=['mes', 'dia_semana'],
+                how='left'
+            ).fillna({'total_ocorrencias': 0})
+
+            df_media_hm['media_diaria'] = df_media_hm['total_ocorrencias'] / df_media_hm['total_dias_no_periodo']
+            
+            heatmap_pivot = df_media_hm.pivot_table(index='mes', columns='dia_semana', values='media_diaria').fillna(0)
+            
+            # 8. Ordenar meses e dias da semana
+            meses_ordem = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+            nomes_meses_pt = {'January': 'Janeiro', 'February': 'Fevereiro', 'March': 'Março', 'April': 'Abril', 'May': 'Maio', 'June': 'Junho', 'July': 'Julho', 'August': 'Agosto', 'September': 'Setembro', 'October': 'Outubro', 'November': 'Novembro', 'December': 'Dezembro'}
+            dias_ordem = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+            nomes_dias_pt = {'Monday': 'Segunda', 'Tuesday': 'Terça', 'Wednesday': 'Quarta', 'Thursday': 'Quinta', 'Friday': 'Sexta', 'Saturday': 'Sábado', 'Sunday': 'Domingo'}
+            
+            heatmap_pivot = heatmap_pivot.reindex(index=meses_ordem, columns=dias_ordem, fill_value=0)
+            
+            heatmap_pivot.index = heatmap_pivot.index.map(nomes_meses_pt)
+            heatmap_pivot.columns = [nomes_dias_pt[col] for col in heatmap_pivot.columns]
+            
+            fig_heatmap_sazonal = go.Figure(data=go.Heatmap(
+                z=heatmap_pivot.values,
+                x=heatmap_pivot.columns,
+                y=heatmap_pivot.index,
+                colorscale='Purples',
+                hoverongaps=False,
+                text=heatmap_pivot.values,
+                texttemplate="%{text:.2f}"
+            ))
+
+            fig_heatmap_sazonal.update_layout(
+                title="Concentração Média de Ocorrências por Mês e Dia da Semana",
+                xaxis_title="Dia da Semana",
+                yaxis_title="Mês",
+                xaxis={'type': 'category'}, 
+                yaxis={'type': 'category', 'categoryorder': 'array', 'categoryarray': list(nomes_meses_pt.values())}
+            )
+            st.plotly_chart(fig_heatmap_sazonal, use_container_width=True)
+            
+            st.markdown("---")
+            st.info("""
+            **Por que é Avançado:** Transforma a análise temporal de descritiva ("o que aconteceu") para preditiva ("o que provavelmente vai acontecer"). Isso permite um planejamento proativo, como o reforço de patrulhas e a intensificação de campanhas "Ligue 180" durante o Carnaval ou as festas de fim de ano, por exemplo.
+            """)
+
+        else:
+            st.warning("Não há dados para exibir a Análise Sazonal com os filtros selecionados.")
+
 
     if not df_vulnerabilidade.empty:
         with tab_geral:
@@ -2438,7 +2672,6 @@ with tab_letalidade:
         st.error("🚨 Dados não carregados. Verifique os arquivos em `data/`.")
         st.warning("Certifique-se de que os arquivos `base_geral.xlsx` e `base_feminicidio.xlsx` existem na pasta `data`.")
 
-# --- ABA 3: GLOSSÁRIO (Sempre visível) ---
 with tab_glossario:
     st.header("Metodologia e Glossário")
     
@@ -2521,14 +2754,12 @@ with tab_glossario:
     </div>
     """, unsafe_allow_html=True)
 
-# Rodapé
 st.markdown("""
 <div class='footer'>
     Observatório da Violência Contra a Mulher - SC | 2025
 </div>
 """, unsafe_allow_html=True)
 
-# --- ABA 4: DOWNLOAD DE DADOS ---
 with tab_download:
     st.header("Download das Fontes de Dados")
     st.markdown("Faça o download dos arquivos de dados utilizados neste painel.")
@@ -2569,57 +2800,3 @@ with tab_download:
                 file_name="municipios_sc.json",
                 mime="application/json"
             )
-# --- NOVA FUNÇÃO PARA CALCULAR O ÍNDICE DE LETALIDADE ---
-def calcular_indice_letalidade(df_geral_filtrado, df_feminicidio_filtrado, agrupamento):
-    """Calcula o Índice de Letalidade da Violência."""
-    coluna_agrupamento_map = {
-        "Município": "municipio_normalizado",
-        "Mesorregião": "mesoregiao",
-        "Associação": "associacao"
-    }
-    if agrupamento not in coluna_agrupamento_map:
-        return pd.DataFrame()
-    
-    coluna_agrupamento = coluna_agrupamento_map[agrupamento]
-
-    # Contar ocorrências da base geral (que não são feminicídios, conforme a interpretação da fórmula)
-    # A base df_geral_filtrado já contém feminicídios, então precisamos excluí-los para a contagem de 'total_ocorrencias'
-    df_ocorrencias_puras = df_geral_filtrado[df_geral_filtrado['fato_comunicado'] != 'Feminicídio']
-    total_ocorrencias = df_ocorrencias_puras.groupby(coluna_agrupamento).size().reset_index(name='total_ocorrencias')
-    
-    # Contar feminicídios a partir do dataframe de feminicidios
-    total_feminicidios = df_feminicidio_filtrado.groupby(coluna_agrupamento).size().reset_index(name='total_feminicidios')
-    
-    # Unir os dados
-    df_letalidade = pd.merge(total_ocorrencias, total_feminicidios, on=coluna_agrupamento, how='outer').fillna(0)
-    
-    # Converter para int
-    df_letalidade['total_ocorrencias'] = df_letalidade['total_ocorrencias'].astype(int)
-    df_letalidade['total_feminicidios'] = df_letalidade['total_feminicidios'].astype(int)
-    
-    # Calcular o índice conforme a fórmula: (fem / (ocorrencias + fem))
-    soma_total = df_letalidade['total_ocorrencias'] + df_letalidade['total_feminicidios']
-    df_letalidade['indice_letalidade'] = np.where(
-        soma_total > 0,
-        (df_letalidade['total_feminicidios'] / soma_total) * 10000, # Usando 10.000 como na sugestão
-        0
-    )
-    
-    # Adicionar a coluna de total de eventos para a tabela
-    df_letalidade['total_eventos'] = soma_total
-
-    # Renomear a coluna de agrupamento para um nome genérico
-    df_letalidade.rename(columns={coluna_agrupamento: 'localidade'}, inplace=True)
-    
-    # Reordenar colunas
-    df_final = df_letalidade[[
-        'localidade', 
-        'total_eventos',
-        'total_ocorrencias', 
-        'total_feminicidios', 
-        'indice_letalidade'
-    ]]
-
-    return df_final.sort_values(by='indice_letalidade', ascending=False)
-    
-
