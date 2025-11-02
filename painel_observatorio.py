@@ -1331,7 +1331,14 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
         )
         fig_mapa.update_layout(
             margin={"r":0,"t":0,"l":0,"b":0},
-            coloraxis_showscale=True 
+            coloraxis_showscale=True,
+            coloraxis_colorbar=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=-0.1,
+                xanchor="center",
+                x=0.5
+            )
         )
         st.plotly_chart(fig_mapa, use_container_width=True, key="mapa_geral")
 
@@ -1733,7 +1740,14 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
         )
         fig_mapa_fem.update_layout(
             margin={"r":0,"t":0,"l":0,"b":0},
-            coloraxis_showscale=False
+            coloraxis_showscale=True,
+            coloraxis_colorbar=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=-0.1,
+                xanchor="center",
+                x=0.5
+            )
         )
         st.plotly_chart(fig_mapa_fem, use_container_width=True, key="mapa_fem")
 
@@ -2301,7 +2315,16 @@ with tab_analises_avancadas:
                     opacity=0.7,
                     labels={'indice_letalidade': f'Índice de Letalidade (a cada 100 eventos)'}
                 )
-                fig_mapa_letalidade.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
+                fig_mapa_letalidade.update_layout(
+                    margin={"r":0,"t":0,"l":0,"b":0},
+                    coloraxis_colorbar=dict(
+                        orientation="h",
+                        yanchor="bottom",
+                        y=-0.1,
+                        xanchor="center",
+                        x=0.5
+                    )
+                )
                 st.plotly_chart(fig_mapa_letalidade, use_container_width=True, key="mapa_letalidade")
 
                 st.markdown("---")
