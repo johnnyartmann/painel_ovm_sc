@@ -956,14 +956,10 @@ df_calendario = carregar_dados_calendario()
 
 st.sidebar.image("logo_ovm.jpeg", use_container_width=True)
 
-tab_geral, tab_feminicidio, tab_letalidade, tab_vulnerabilidade, tab_efetividade, tab_contagio, tab_sazonal, tab_glossario, tab_download = st.tabs([
+tab_geral, tab_feminicidio, tab_analises_avancadas, tab_glossario, tab_download = st.tabs([
     "📊 Análise Geral", 
     "🚨 Análise de Feminicídios",
-    "📈 Índice de Letalidade",
-    "🎯 Análise de Vulnerabilidade",
-    "🔎 Efetividade da Denúncia",
-    "🌐 Contágio Geográfico",
-    "📅 Análise Sazonal",
+    "🔬 Análises Avançadas",
     "📖 Metodologia e Glossário", 
     "📥 Download de Dados"
 ])
@@ -2220,83 +2216,87 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             else:
                 st.warning("Não há dados para exibir na tabela de feminicídios com os filtros selecionados.")
 
-with tab_letalidade:
-    st.header("Índice de Letalidade da Violência")
-    st.markdown("""
-    **A Grande Pergunta:** Qual a probabilidade de uma denúncia de violência em um determinado município escalar para um feminicídio?
-
-    Este índice diferencia o volume de denúncias da **falha fatal do sistema de prevenção**. Um município pode ter poucas denúncias, mas uma alta taxa de letalidade, indicando um problema gravíssimo e silencioso. O índice é calculado como:
+with tab_analises_avancadas:
+    st.header("Análises Avançadas sobre a Violência")
+    st.markdown("Explore métricas e correlações mais profundas para entender as dinâmicas da violência contra a mulher em Santa Catarina.")
     
-    `Índice = (Total de Feminicídios / (Total de Ocorrências de Violência + Total de Feminicídios)) * 100`
+    with st.expander("📈 Índice de Letalidade da Violência", expanded=False):
+        st.header("Índice de Letalidade da Violência")
+        st.markdown("""
+        **A Grande Pergunta:** Qual a probabilidade de uma denúncia de violência em um determinado município escalar para um feminicídio?
 
-    Isso representa: *"Para cada 100 ocorrências de violência contra a mulher, X resultam em morte."*
-    """)
-    
-    # O agrupamento "Consolidado" não faz sentido para este índice, pois queremos comparar localidades.
-    if agrupamento_selecionado == "Consolidado":
-        st.warning("Por favor, selecione um nível de agrupamento (Município, Mesorregião ou Associação) para visualizar o Índice de Letalidade.")
-    else:
-        # Calcular o índice
-        df_letalidade_calculado = calcular_indice_letalidade(df_geral_filtrado, df_feminicidio_filtrado, agrupamento_selecionado)
+        Este índice diferencia o volume de denúncias da **falha fatal do sistema de prevenção**. Um município pode ter poucas denúncias, mas uma alta taxa de letalidade, indicando um problema gravíssimo e silencioso. O índice é calculado como:
         
-        if df_letalidade_calculado.empty:
-            st.info("Não há dados suficientes para calcular o Índice de Letalidade com os filtros selecionados.")
+        `Índice = (Total de Feminicídios / (Total de Ocorrências de Violência + Total de Feminicídios)) * 100`
+
+        Isso representa: *"Para cada 100 ocorrências de violência contra a mulher, X resultam em morte."*
+        """)
+        
+        # O agrupamento "Consolidado" não faz sentido para este índice, pois queremos comparar localidades.
+        if agrupamento_selecionado == "Consolidado":
+            st.warning("Por favor, selecione um nível de agrupamento (Município, Mesorregião ou Associação) para visualizar o Índice de Letalidade.")
         else:
-            st.subheader(f"Mapa Coroplético do Índice de Letalidade por {agrupamento_selecionado}")
-
-            if agrupamento_selecionado == "Município":
-                map_df_letalidade = df_letalidade_calculado.rename(columns={'localidade': 'municipio_normalizado'})
-            else: 
-                mapa_grupo_para_indice = df_letalidade_calculado.set_index('localidade')['indice_letalidade']
-                
-                coluna_agrupamento = "mesoregiao" if agrupamento_selecionado == "Mesorregião" else "associacao"
-                
-                municipios_no_filtro = df_geral_filtrado[['municipio_normalizado', coluna_agrupamento]].drop_duplicates()
-                
-                municipios_no_filtro['indice_letalidade'] = municipios_no_filtro[coluna_agrupamento].map(mapa_grupo_para_indice)
-                map_df_letalidade = municipios_no_filtro.fillna(0)
-
-            fig_mapa_letalidade = px.choropleth_mapbox(
-                map_df_letalidade, 
-                geojson=geojson_sc, 
-                locations='municipio_normalizado',
-                featureidkey="properties.NM_MUN_NORMALIZADO", 
-                color='indice_letalidade',
-                color_continuous_scale="OrRd", 
-                mapbox_style="carto-positron",
-                zoom=6, 
-                center={"lat": -27.59, "lon": -50.52}, 
-                opacity=0.7,
-                labels={'indice_letalidade': f'Índice de Letalidade (a cada 100 eventos)'}
-            )
-            fig_mapa_letalidade.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
-            st.plotly_chart(fig_mapa_letalidade, use_container_width=True)
-
-            st.markdown("---")
+            # Calcular o índice
+            df_letalidade_calculado = calcular_indice_letalidade(df_geral_filtrado, df_feminicidio_filtrado, agrupamento_selecionado)
             
-            st.subheader(f"Ranking do Índice de Letalidade por {agrupamento_selecionado}")
-            st.markdown("A tabela abaixo classifica as localidades com maior risco de letalidade. O índice alto, mesmo com poucas ocorrências, é um sinal de alerta.")
-            
-            # Formatar a tabela de ranking
-            df_ranking = df_letalidade_calculado.rename(columns={
-                'localidade': agrupamento_selecionado,
-                'total_eventos': 'Total de Eventos (Ocorrências + Feminicídios)',
-                'total_ocorrencias': 'Ocorrências de Violência',
-                'total_feminicidios': 'Feminicídios',
-                'indice_letalidade': 'Índice de Letalidade'
-            }).set_index(agrupamento_selecionado)
+            if df_letalidade_calculado.empty:
+                st.info("Não há dados suficientes para calcular o Índice de Letalidade com os filtros selecionados.")
+            else:
+                st.subheader(f"Mapa Coroplético do Índice de Letalidade por {agrupamento_selecionado}")
 
-            st.dataframe(
-                df_ranking.style.format({
-                    'Índice de Letalidade': '{:.2f}',
-                    'Total de Eventos (Ocorrências + Feminicídios)': '{:.0f}',
-                    'Ocorrências de Violência': '{:.0f}',
-                    'Feminicídios': '{:.0f}'
-                }).background_gradient(cmap='OrRd', subset=['Índice de Letalidade']),
-                use_container_width=True
-            )
+                if agrupamento_selecionado == "Município":
+                    map_df_letalidade = df_letalidade_calculado.rename(columns={'localidade': 'municipio_normalizado'})
+                else: 
+                    mapa_grupo_para_indice = df_letalidade_calculado.set_index('localidade')['indice_letalidade']
+                    
+                    coluna_agrupamento = "mesoregiao" if agrupamento_selecionado == "Mesorregião" else "associacao"
+                    
+                    municipios_no_filtro = df_geral_filtrado[['municipio_normalizado', coluna_agrupamento]].drop_duplicates()
+                    
+                    municipios_no_filtro['indice_letalidade'] = municipios_no_filtro[coluna_agrupamento].map(mapa_grupo_para_indice)
+                    map_df_letalidade = municipios_no_filtro.fillna(0)
 
-    with tab_vulnerabilidade:
+                fig_mapa_letalidade = px.choropleth_mapbox(
+                    map_df_letalidade, 
+                    geojson=geojson_sc, 
+                    locations='municipio_normalizado',
+                    featureidkey="properties.NM_MUN_NORMALIZADO", 
+                    color='indice_letalidade',
+                    color_continuous_scale="OrRd", 
+                    mapbox_style="carto-positron",
+                    zoom=6, 
+                    center={"lat": -27.59, "lon": -50.52}, 
+                    opacity=0.7,
+                    labels={'indice_letalidade': f'Índice de Letalidade (a cada 100 eventos)'}
+                )
+                fig_mapa_letalidade.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
+                st.plotly_chart(fig_mapa_letalidade, use_container_width=True)
+
+                st.markdown("---")
+                
+                st.subheader(f"Ranking do Índice de Letalidade por {agrupamento_selecionado}")
+                st.markdown("A tabela abaixo classifica as localidades com maior risco de letalidade. O índice alto, mesmo com poucas ocorrências, é um sinal de alerta.")
+                
+                # Formatar a tabela de ranking
+                df_ranking = df_letalidade_calculado.rename(columns={
+                    'localidade': agrupamento_selecionado,
+                    'total_eventos': 'Total de Eventos (Ocorrências + Feminicídios)',
+                    'total_ocorrencias': 'Ocorrências de Violência',
+                    'total_feminicidios': 'Feminicídios',
+                    'indice_letalidade': 'Índice de Letalidade'
+                }).set_index(agrupamento_selecionado)
+
+                st.dataframe(
+                    df_ranking.style.format({
+                        'Índice de Letalidade': '{:.2f}',
+                        'Total de Eventos (Ocorrências + Feminicídios)': '{:.0f}',
+                        'Ocorrências de Violência': '{:.0f}',
+                        'Feminicídios': '{:.0f}'
+                    }).background_gradient(cmap='OrRd', subset=['Índice de Letalidade']),
+                    use_container_width=True
+                )
+
+    with st.expander("🎯 Análise de Vulnerabilidade", expanded=False):
         st.header("Análise de Vulnerabilidade por Faixa Etária e Tipo de Crime")
         st.markdown("""
         Esta análise segmenta o problema por demografia, em vez de geografia, para identificar janelas de vulnerabilidade específicas na vida de uma mulher para certos tipos de crime. O objetivo é permitir a criação de campanhas de prevenção e políticas de proteção mais direcionadas.
@@ -2369,7 +2369,7 @@ with tab_letalidade:
         else:
             st.warning("Não há dados suficientes para gerar o heatmap com os filtros selecionados.")
 
-    with tab_efetividade:
+    with st.expander("🔎 Efetividade da Denúncia", expanded=False):
         st.header("Índice de Efetividade da Denúncia")
         st.markdown("""
         **A Grande Pergunta:** Em um município, um alto número de denúncias de crimes "menores" (como ameaça) está correlacionado a um menor número de crimes graves (lesão corporal, feminicídio)? Ou seja, a denúncia está funcionando como um mecanismo de prevenção eficaz?
@@ -2430,7 +2430,7 @@ with tab_letalidade:
         else:
             st.warning("Não há dados suficientes para gerar a análise de efetividade com os filtros selecionados.")
 
-    with tab_contagio:
+    with st.expander("🌐 Contágio Geográfico", expanded=False):
         st.header("Análise de Contágio Geográfico (Hotspots de Vizinhança)")
         st.markdown("""
         **A Grande Pergunta:** A violência em um município é um fenômeno isolado ou é influenciada pela situação de seus vizinhos? Existem "clusters" regionais de violência que transcendem as fronteiras municipais?
@@ -2512,7 +2512,7 @@ with tab_letalidade:
         else:
             st.warning("Não há dados suficientes para gerar a Análise de Contágio Geográfico com os filtros selecionados.")
     
-    with tab_sazonal:
+    with st.expander("📅 Análise Sazonal", expanded=False):
         st.header("Sazonalidade e Eventos-Chave: O Calendário do Risco")
         st.markdown("""
         **A Grande Pergunta:** A violência contra a mulher aumenta de forma previsível em torno de datas ou eventos específicos (feriados, fins de semana prolongados, períodos de férias)?
@@ -2664,13 +2664,15 @@ with tab_letalidade:
             st.warning("Não há dados para exibir a Análise Sazonal com os filtros selecionados.")
 
 
-    if not df_vulnerabilidade.empty:
+    if not df_geral_filtrado.empty:
+        pass
+    else:
         with tab_geral:
             st.error("🚨 Dados não carregados. Verifique os arquivos em `data/`.")
-        st.warning("Certifique-se de que os arquivos `base_geral.xlsx`, `base_feminicidio.xlsx` e `municipios_sc.json` existem na pasta `data`.")
-    with tab_feminicidio:
-        st.error("🚨 Dados não carregados. Verifique os arquivos em `data/`.")
-        st.warning("Certifique-se de que os arquivos `base_geral.xlsx` e `base_feminicidio.xlsx` existem na pasta `data`.")
+            st.warning("Certifique-se de que os arquivos `base_geral.xlsx`, `base_feminicidio.xlsx` e `municipios_sc.json` existem na pasta `data`.")
+        with tab_feminicidio:
+            st.error("🚨 Dados não carregados. Verifique os arquivos em `data/`.")
+            st.warning("Certifique-se de que os arquivos `base_geral.xlsx` e `base_feminicidio.xlsx` existem na pasta `data`.")
 
 with tab_glossario:
     st.header("Metodologia e Glossário")
