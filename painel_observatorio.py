@@ -1331,7 +1331,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             margin={"r":0,"t":0,"l":0,"b":0},
             coloraxis_showscale=True 
         )
-        st.plotly_chart(fig_mapa, use_container_width=True)
+        st.plotly_chart(fig_mapa, use_container_width=True, key="mapa_geral")
 
         st.markdown("---")
 
@@ -1381,7 +1381,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             )
             if agrupamento_selecionado == "Consolidado":
                 fig_temporal.update_traces(line_color='#8A2BE2')
-        st.plotly_chart(fig_temporal, use_container_width=True)
+        st.plotly_chart(fig_temporal, use_container_width=True, key="temporal_geral")
         st.markdown("---")
 
         col_graf1, col_graf2 = st.columns(2)
@@ -1435,7 +1435,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     hole=.4, color_discrete_sequence=px.colors.sequential.Purples_r
                 )
                 fig_ano.update_traces(textinfo='percent+label', textposition='outside')
-            st.plotly_chart(fig_ano, use_container_width=True)
+            st.plotly_chart(fig_ano, use_container_width=True, key="ano_geral")
 
         with col_graf2:
             st.subheader("Tipos de Crimes Mais Frequentes")
@@ -1474,7 +1474,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     hole=.4, color_discrete_sequence=px.colors.sequential.Purples_r
                 )
                 fig_fato.update_traces(textinfo='percent+label', textposition='outside')
-            st.plotly_chart(fig_fato, use_container_width=True)
+            st.plotly_chart(fig_fato, use_container_width=True, key="fato_geral")
 
         st.markdown("---")
         
@@ -1506,7 +1506,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     color_discrete_sequence=px.colors.sequential.Purples_r
                 )
                 fig_faixa_etaria.update_traces(textinfo='percent+label', textposition='outside')
-            st.plotly_chart(fig_faixa_etaria, use_container_width=True)
+            st.plotly_chart(fig_faixa_etaria, use_container_width=True, key="faixa_etaria_geral")
         with col_graf4:
             st.subheader("Distribuição de Ocorrências por Mês")
             chart_type_mes = st.selectbox(
@@ -1545,7 +1545,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     color_discrete_sequence=px.colors.sequential.Purples_r
                 )
                 fig_mes.update_traces(textinfo='percent+label', textposition='outside', sort=False)
-            st.plotly_chart(fig_mes, use_container_width=True)
+            st.plotly_chart(fig_mes, use_container_width=True, key="mes_geral")
         
         st.markdown("---")
 
@@ -1588,7 +1588,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                 color_discrete_sequence=px.colors.sequential.Purples_r
             )
             fig_dia_semana.update_traces(textinfo='percent+label', textposition='outside')
-        st.plotly_chart(fig_dia_semana, use_container_width=True)
+        st.plotly_chart(fig_dia_semana, use_container_width=True, key="dia_semana_geral")
 
         st.markdown("---")
         
@@ -1733,7 +1733,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             margin={"r":0,"t":0,"l":0,"b":0},
             coloraxis_showscale=False
         )
-        st.plotly_chart(fig_mapa_fem, use_container_width=True)
+        st.plotly_chart(fig_mapa_fem, use_container_width=True, key="mapa_fem")
 
         st.markdown("---")
         
@@ -1775,7 +1775,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     yaxis_title="Idade do Autor",
                     legend_title="Legenda"
                 )
-                st.plotly_chart(fig_scatter_idade, use_container_width=True)
+                st.plotly_chart(fig_scatter_idade, use_container_width=True, key="scatter_idade_fem")
             else:
                 st.info("Não há dados suficientes para exibir o gráfico de correlação de idades.")
 
@@ -1811,7 +1811,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                         title_text="Histórico do Agressor: A Escalada da Violência",
                         font_size=12
                     )
-                    st.plotly_chart(fig_sankey, use_container_width=True)
+                    st.plotly_chart(fig_sankey, use_container_width=True, key="sankey_fem")
                 else:
                     st.info("Não há dados para exibir o gráfico de histórico do agressor.")
             else:
@@ -1857,7 +1857,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     hole=.4, color_discrete_sequence=px.colors.sequential.Purples_r
                 )
                 fig_vinculo.update_traces(textinfo='percent+label', textposition='outside')
-            st.plotly_chart(fig_vinculo, use_container_width=True)
+            st.plotly_chart(fig_vinculo, use_container_width=True, key="vinculo_fem")
         
         with col_graf_fem2:
             st.subheader("Meio Utilizado para o Crime")
@@ -1895,7 +1895,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     hole=.4, color_discrete_sequence=px.colors.sequential.Purples_r
                 )
                 fig_meio.update_traces(textinfo='percent+label', textposition='outside')
-            st.plotly_chart(fig_meio, use_container_width=True)
+            st.plotly_chart(fig_meio, use_container_width=True, key="meio_fem")
         st.markdown("---")
         
         col_graf_fem1, col_graf_fem2 = st.columns(2)
@@ -1920,7 +1920,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     template='plotly_white', color_discrete_sequence=['#8e24aa'],
                     box=True, points="all"
                 )
-            st.plotly_chart(fig_idade_vitima, use_container_width=True)
+            st.plotly_chart(fig_idade_vitima, use_container_width=True, key="idade_vitima_fem")
         
         with col_graf_fem2:
             st.subheader("Distribuição de Idade do Autor")
@@ -1943,7 +1943,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     template='plotly_white', color_discrete_sequence=['#ab47bc'],
                     box=True, points="all"
                 )
-            st.plotly_chart(fig_idade_autor, use_container_width=True)
+            st.plotly_chart(fig_idade_autor, use_container_width=True, key="idade_autor_fem")
 
         st.markdown("---")
 
@@ -1969,7 +1969,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     bo_contra_autor, names='Resposta', values='Quantidade', hole=0.4,
                     color_discrete_sequence=px.colors.sequential.Purples_r
                 )
-            st.plotly_chart(fig_bo, use_container_width=True)
+            st.plotly_chart(fig_bo, use_container_width=True, key="bo_fem")
 
         with col_graf_fem4:
             st.subheader("Autor Foi Preso?")
@@ -1992,7 +1992,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     autor_preso, names='Resposta', values='Quantidade', hole=0.4,
                     color_discrete_sequence=px.colors.sequential.Purples_r
                 )
-            st.plotly_chart(fig_preso, use_container_width=True)
+            st.plotly_chart(fig_preso, use_container_width=True, key="preso_fem")
         
         st.markdown("---")
         
@@ -2031,7 +2031,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                 hole=.4, color_discrete_sequence=px.colors.sequential.Purples_r
             )
             fig_localidade.update_traces(textinfo='percent+label', textposition='outside')
-        st.plotly_chart(fig_localidade, use_container_width=True)
+        st.plotly_chart(fig_localidade, use_container_width=True, key="localidade_fem")
         
         st.markdown("---")
 
@@ -2056,7 +2056,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     autor_bo, names='Resposta', values='Quantidade', hole=0.4,
                     color_discrete_sequence=px.colors.sequential.Purples_r
                 )
-            st.plotly_chart(fig_autor_bo, use_container_width=True)
+            st.plotly_chart(fig_autor_bo, use_container_width=True, key="autor_bo_fem")
 
         with col_graf_fem6:
             st.subheader("Autor com B.O. por Violência Doméstica?")
@@ -2081,7 +2081,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                             autor_bo_vd, names='Resposta', values='Quantidade', hole=0.4,
                             color_discrete_sequence=px.colors.sequential.Purples_r
                         )
-                    st.plotly_chart(fig_autor_bo_vd, use_container_width=True)
+                    st.plotly_chart(fig_autor_bo_vd, use_container_width=True, key="autor_bo_vd_fem")
                 else:
                     st.info("Não há dados sobre B.O. por violência doméstica para os filtros selecionados.")
             else:
@@ -2134,7 +2134,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             if agrupamento_selecionado == "Consolidado":
                 fig_mes_ano.update_traces(marker_color='#8A2BE2')
             fig_mes_ano.update_traces(textposition='outside')
-        st.plotly_chart(fig_mes_ano, use_container_width=True)
+        st.plotly_chart(fig_mes_ano, use_container_width=True, key="mes_ano_fem")
         
         st.markdown("---")
 
@@ -2180,7 +2180,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             if agrupamento_selecionado == "Consolidado":
                 fig_ano_fem.update_traces(marker_color='#6a1b9a')
             fig_ano_fem.update_traces(textposition='outside')
-        st.plotly_chart(fig_ano_fem, use_container_width=True)
+        st.plotly_chart(fig_ano_fem, use_container_width=True, key="ano_fem")
 
         st.markdown("---")
 
@@ -2300,7 +2300,7 @@ with tab_analises_avancadas:
                     labels={'indice_letalidade': f'Índice de Letalidade (a cada 100 eventos)'}
                 )
                 fig_mapa_letalidade.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
-                st.plotly_chart(fig_mapa_letalidade, use_container_width=True)
+                st.plotly_chart(fig_mapa_letalidade, use_container_width=True, key="mapa_letalidade")
 
                 st.markdown("---")
                 
@@ -2368,7 +2368,7 @@ with tab_analises_avancadas:
                 barmode='stack',
                 yaxis_ticksuffix='%'
             )
-            st.plotly_chart(fig_barras_vulnerabilidade, use_container_width=True)
+            st.plotly_chart(fig_barras_vulnerabilidade, use_container_width=True, key="barras_vulnerabilidade")
         else:
             st.warning("Não há dados suficientes para gerar o gráfico de vulnerabilidade com os filtros selecionados.")
 
@@ -2395,7 +2395,7 @@ with tab_analises_avancadas:
                 xaxis_title="Tipo de Crime",
                 yaxis_title="Faixa Etária da Vítima",
             )
-            st.plotly_chart(fig_heatmap, use_container_width=True)
+            st.plotly_chart(fig_heatmap, use_container_width=True, key="heatmap_vulnerabilidade")
         else:
             st.warning("Não há dados suficientes para gerar o heatmap com os filtros selecionados.")
 
@@ -2446,7 +2446,7 @@ with tab_analises_avancadas:
                 title="Efetividade da Denúncia: Crimes Leves vs. Graves por Município"
             )
             fig_efetividade.update_traces(marker=dict(size=10, opacity=0.7, color='#8e24aa'))
-            st.plotly_chart(fig_efetividade, use_container_width=True)
+            st.plotly_chart(fig_efetividade, use_container_width=True, key="scatter_efetividade")
 
             st.markdown("---")
             st.subheader("Como Interpretar o Gráfico")
@@ -2529,7 +2529,7 @@ with tab_analises_avancadas:
             fig_contagio.add_annotation(x=max_x, y=0, text="Ilhas de Violência", showarrow=False, xanchor='right', yanchor='bottom', font=dict(color="purple"))
             
             fig_contagio.update_traces(marker=dict(size=10, opacity=0.7, color='#8e24aa'))
-            st.plotly_chart(fig_contagio, use_container_width=True)
+            st.plotly_chart(fig_contagio, use_container_width=True, key="scatter_contagio")
 
             st.markdown("---")
             st.subheader("Como Interpretar os Quadrantes")
@@ -2627,7 +2627,7 @@ with tab_analises_avancadas:
                 texttemplate='%{text:.2f}',
                 textposition='outside'
             )
-            st.plotly_chart(fig_barras_sazonal, use_container_width=True)
+            st.plotly_chart(fig_barras_sazonal, use_container_width=True, key="barras_sazonal")
 
             st.markdown("---")
 
@@ -2683,7 +2683,7 @@ with tab_analises_avancadas:
                 xaxis={'type': 'category'}, 
                 yaxis={'type': 'category', 'categoryorder': 'array', 'categoryarray': list(nomes_meses_pt.values())}
             )
-            st.plotly_chart(fig_heatmap_sazonal, use_container_width=True)
+            st.plotly_chart(fig_heatmap_sazonal, use_container_width=True, key="heatmap_sazonal")
             
             st.markdown("---")
             st.info("""
