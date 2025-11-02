@@ -1,8 +1,10 @@
 streamlit
 pandas
-plotly-express
+plotly
 openpyxl
 statsmodels
 shapely
-holidays
-re
+numpy
+unicodedata2
+openpyxl
+matplotlib
