@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 import json
 import unicodedata
 import numpy as np
+import re
 from shapely.geometry import shape, Point
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
@@ -393,13 +394,42 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-def normalizar_nome(nome):
-    """Remove acentos, caracteres especiais e converte para maiúsculo."""
-    if isinstance(nome, str):
-        nfkd_form = unicodedata.normalize('NFD', nome)
-        nome_sem_acento = "".join([c for c in nfkd_form if not unicodedata.combining(c)])
-        return nome_sem_acento.upper().strip()
-    return nome
+def normalizar_nome(texto):
+    """
+    Limpa e padroniza uma string de texto para ser usada como
+    chave de junção.
+    """
+    if not isinstance(texto, str):
+        return ""
+   
+    texto = texto.lower()
+   
+    # --- 1. Mapa de Exceções (Hard-coded) ---
+    mapa_excecoes = {
+        'herval': 'herval d oeste'
+        # (Mantemos a correção para o arquivo Geo)
+    }
+    if texto in mapa_excecoes:
+        texto = mapa_excecoes[texto]
+ 
+    # --- 2. Normalização de Acentos ---
+    texto = ''.join(c for c in unicodedata.normalize('NFD', texto)
+                    if unicodedata.category(c) != 'Mn')
+   
+    # --- 3. Normalização de Pontuação ---
+    # Substitui qualquer coisa que NÃO seja (^) letra (a-z),
+    # número (0-9) ou espaço (\s) por um espaço.
+    texto = re.sub(r'[^a-z0-9\s]', ' ', texto)
+   
+    # --- 4. Normalização de Palavras ---
+    # Remove artigos/preposições (agora cercados por espaços)
+    texto = re.sub(r'\b(de|do|da|d)\b', ' ', texto)
+   
+    # --- 5. Limpeza Final ---
+    # Remove espaços múltiplos (criados pelas substituições)
+    texto = re.sub(r'\s+', ' ', texto).strip()
+    
+    return texto.upper()
 
 @st.cache_data
 def carregar_geojson_sc():
