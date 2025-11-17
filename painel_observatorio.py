@@ -754,28 +754,32 @@ def criar_tabela_consolidada(df, coluna_agrupamento, nome_agrupamento):
     """Cria uma tabela consolidada com dados de crimes por [agrupamento]."""
     df_agrupado = df.groupby([coluna_agrupamento, 'fato_comunicado', 'ano']).size().reset_index(name='total_crime')
     df_pivot = df_agrupado.pivot_table(index=[coluna_agrupamento, 'fato_comunicado'], columns='ano', values='total_crime', fill_value=0)
+    
+    anos_int = sorted([col for col in df_pivot.columns if isinstance(col, int)])
+    ano_corrente = pd.Timestamp.now().year
+
     df_pivot = df_pivot.reindex(sorted(df_pivot.columns), axis=1)
     df_pivot['total'] = df_pivot.sum(axis=1)
     
-    anos = sorted(df_agrupado['ano'].unique())
-    if len(anos) > 1:
-        for i in range(1, len(anos)):
-            ano_atual = anos[i]
-            ano_anterior = anos[i-1]
+    if len(anos_int) > 1:
+        for i in range(1, len(anos_int)):
+            ano_atual = anos_int[i]
+            if ano_atual == ano_corrente:
+                break
+            ano_anterior = anos_int[i-1]
             coluna_evolucao = f'Diferença {ano_anterior}-{ano_atual}'
             df_pivot[coluna_evolucao] = (
                 (df_pivot[ano_atual] - df_pivot[ano_anterior]) / df_pivot[ano_anterior].replace(0, pd.NA) * 100
             )
     
-    anos_int = sorted([col for col in df_pivot.columns if isinstance(col, int)])
-    
-    ano_corrente = pd.Timestamp.now().year
     anos_para_cagr = [ano for ano in anos_int if ano != ano_corrente]
-
     if len(anos_para_cagr) >= 3:
         valor_inicial = df_pivot[anos_para_cagr[0]]
         valor_final = df_pivot[anos_para_cagr[-1]]
         df_pivot['Tendência (CAGR %)'] = calcular_cagr(valor_inicial, valor_final, len(anos_para_cagr))
+
+    if ano_corrente in df_pivot.columns:
+        df_pivot.rename(columns={ano_corrente: f'{ano_corrente} (Parcial)'}, inplace=True)
 
     ordem_colunas = []
     if anos_int:
@@ -783,7 +787,12 @@ def criar_tabela_consolidada(df, coluna_agrupamento, nome_agrupamento):
         for i in range(1, len(anos_int)):
             ano_anterior = anos_int[i-1]
             ano_atual = anos_int[i]
-            ordem_colunas.append(ano_atual)
+            
+            if ano_atual == ano_corrente:
+                ordem_colunas.append(f'{ano_atual} (Parcial)')
+            else:
+                ordem_colunas.append(ano_atual)
+            
             coluna_evolucao = f'Diferença {ano_anterior}-{ano_atual}'
             if coluna_evolucao in df_pivot.columns:
                 ordem_colunas.append(coluna_evolucao)
@@ -792,7 +801,9 @@ def criar_tabela_consolidada(df, coluna_agrupamento, nome_agrupamento):
     if 'Tendência (CAGR %)' in df_pivot.columns:
         ordem_colunas.append('Tendência (CAGR %)')
         
-    df_consolidado = df_pivot[ordem_colunas].reset_index()
+    ordem_final = [col for col in ordem_colunas if col in df_pivot.columns]
+    
+    df_consolidado = df_pivot[ordem_final].reset_index()
     nome_coluna = f"Nome do {nome_agrupamento}" if nome_agrupamento == "Município" else nome_agrupamento
     df_consolidado.rename(columns={coluna_agrupamento: nome_coluna, 'fato_comunicado': 'Fato Comunicado'}, inplace=True)
     
@@ -810,36 +821,30 @@ def criar_tabela_total_consolidada(df):
             if ano not in df_pivot.columns:
                 df_pivot[ano] = 0
 
+    anos_int = sorted([col for col in df_pivot.columns if isinstance(col, int)])
+    ano_corrente = pd.Timestamp.now().year
+
     df_pivot = df_pivot.reindex(sorted(df_pivot.columns), axis=1)
     df_pivot['total'] = df_pivot.sum(axis=1)
-    
-    anos = sorted([col for col in df_pivot.columns if isinstance(col, (int, float))])
 
-    ano_corrente = pd.Timestamp.now().year # Pega o ano corrente
-
-    if len(anos) > 1:
-        for i in range(1, len(anos)):
-            ano_atual = anos[i]
-            
-            # Se o ano atual for o ano corrente, não calcula a variação e interrompe o laço
+    if len(anos_int) > 1:
+        for i in range(1, len(anos_int)):
+            ano_atual = anos_int[i]
             if ano_atual == ano_corrente:
                 break
-                
-            ano_anterior = anos[i-1]
+            ano_anterior = anos_int[i-1]
             coluna_evolucao = f'Diferença {ano_anterior}-{ano_atual}'
-            
             denominador = df_pivot[ano_anterior].replace(0, pd.NA)
             df_pivot[coluna_evolucao] = (df_pivot[ano_atual] - df_pivot[ano_anterior]) / denominador * 100
 
-    anos_int = sorted([col for col in df_pivot.columns if isinstance(col, int)])
-    
-    ano_corrente_cagr = pd.Timestamp.now().year
-    anos_para_cagr = [ano for ano in anos_int if ano != ano_corrente_cagr]
-
+    anos_para_cagr = [ano for ano in anos_int if ano != ano_corrente]
     if len(anos_para_cagr) >= 3:
         valor_inicial = df_pivot[anos_para_cagr[0]]
         valor_final = df_pivot[anos_para_cagr[-1]]
         df_pivot['Tendência (CAGR %)'] = calcular_cagr(valor_inicial, valor_final, len(anos_para_cagr))
+
+    if ano_corrente in df_pivot.columns:
+        df_pivot.rename(columns={ano_corrente: f'{ano_corrente} (Parcial)'}, inplace=True)
 
     ordem_colunas = []
     if anos_int:
@@ -847,16 +852,23 @@ def criar_tabela_total_consolidada(df):
         for i in range(1, len(anos_int)):
             ano_anterior = anos_int[i-1]
             ano_atual = anos_int[i]
-            ordem_colunas.append(ano_atual)
+
+            if ano_atual == ano_corrente:
+                ordem_colunas.append(f'{ano_atual} (Parcial)')
+            else:
+                ordem_colunas.append(ano_atual)
+
             coluna_evolucao = f'Diferença {ano_anterior}-{ano_atual}'
             if coluna_evolucao in df_pivot.columns:
                 ordem_colunas.append(coluna_evolucao)
-    
+
     ordem_colunas.append('total')
     if 'Tendência (CAGR %)' in df_pivot.columns:
         ordem_colunas.append('Tendência (CAGR %)')
 
-    df_consolidado = df_pivot[ordem_colunas].reset_index()
+    ordem_final = [col for col in ordem_colunas if col in df_pivot.columns]
+    
+    df_consolidado = df_pivot[ordem_final].reset_index()
     df_consolidado.rename(columns={'fato_comunicado': 'Fato Comunicado'}, inplace=True)
     
     return df_consolidado
@@ -926,28 +938,30 @@ def criar_tabela_feminicidio_agrupado(df, coluna_agrupamento, nome_agrupamento):
             if ano not in df_pivot.columns:
                 df_pivot[ano] = 0
 
+    anos_int = sorted([col for col in df_pivot.columns if isinstance(col, int)])
+    ano_corrente = pd.Timestamp.now().year
+
     df_pivot = df_pivot.reindex(sorted(df_pivot.columns), axis=1)
     df_pivot['total'] = df_pivot.sum(axis=1)
-    
-    anos = sorted([col for col in df_pivot.columns if isinstance(col, (int, float))])
 
-    if len(anos) > 1:
-        for i in range(1, len(anos)):
-            ano_atual = anos[i]
-            ano_anterior = anos[i-1]
+    if len(anos_int) > 1:
+        for i in range(1, len(anos_int)):
+            ano_atual = anos_int[i]
+            if ano_atual == ano_corrente:
+                break
+            ano_anterior = anos_int[i-1]
             coluna_evolucao = f'Diferença {ano_anterior}-{ano_atual}'
             denominador = df_pivot[ano_anterior].replace(0, pd.NA)
             df_pivot[coluna_evolucao] = (df_pivot[ano_atual] - df_pivot[ano_anterior]) / denominador * 100
 
-    anos_int = sorted([col for col in df_pivot.columns if isinstance(col, int)])
-    
-    ano_corrente = pd.Timestamp.now().year
     anos_para_cagr = [ano for ano in anos_int if ano != ano_corrente]
-
     if len(anos_para_cagr) >= 3:
         valor_inicial = df_pivot[anos_para_cagr[0]]
         valor_final = df_pivot[anos_para_cagr[-1]]
         df_pivot['Tendência (CAGR %)'] = calcular_cagr(valor_inicial, valor_final, len(anos_para_cagr))
+
+    if ano_corrente in df_pivot.columns:
+        df_pivot.rename(columns={ano_corrente: f'{ano_corrente} (Parcial)'}, inplace=True)
 
     ordem_colunas = []
     if anos_int:
@@ -955,16 +969,23 @@ def criar_tabela_feminicidio_agrupado(df, coluna_agrupamento, nome_agrupamento):
         for i in range(1, len(anos_int)):
             ano_anterior = anos_int[i-1]
             ano_atual = anos_int[i]
-            ordem_colunas.append(ano_atual)
+
+            if ano_atual == ano_corrente:
+                ordem_colunas.append(f'{ano_atual} (Parcial)')
+            else:
+                ordem_colunas.append(ano_atual)
+            
             coluna_evolucao = f'Diferença {ano_anterior}-{ano_atual}'
             if coluna_evolucao in df_pivot.columns:
                 ordem_colunas.append(coluna_evolucao)
-    
+
     ordem_colunas.append('total')
     if 'Tendência (CAGR %)' in df_pivot.columns:
         ordem_colunas.append('Tendência (CAGR %)')
+    
+    ordem_final = [col for col in ordem_colunas if col in df_pivot.columns]
 
-    df_consolidado = df_pivot[ordem_colunas].reset_index()
+    df_consolidado = df_pivot[ordem_final].reset_index()
     nome_coluna = f"Nome do {nome_agrupamento}" if nome_agrupamento == "Município" else nome_agrupamento
     df_consolidado.rename(columns={coluna_agrupamento: nome_coluna}, inplace=True)
     
@@ -984,35 +1005,33 @@ def criar_tabela_total_feminicidio(df):
         for ano in anos_todos:
             if ano not in df_pivot.columns:
                 df_pivot[ano] = 0
-    df_pivot = df_pivot.reindex(sorted(df_pivot.columns), axis=1)
-
-    df_pivot['total'] = df_pivot.sum(axis=1)
     
-    anos = sorted([col for col in df_pivot.columns if isinstance(col, (int, float))])
-
+    anos_int = sorted([col for col in df_pivot.columns if isinstance(col, int)])
     ano_corrente = pd.Timestamp.now().year
 
-    if len(anos) > 1:
-        for i in range(1, len(anos)):
-            ano_atual = anos[i]
+    df_pivot = df_pivot.reindex(sorted(df_pivot.columns), axis=1)
+    df_pivot['total'] = df_pivot.sum(axis=1)
+
+    if len(anos_int) > 1:
+        for i in range(1, len(anos_int)):
+            ano_atual = anos_int[i]
 
             if ano_atual == ano_corrente:
                 break
 
-            ano_anterior = anos[i-1]
+            ano_anterior = anos_int[i-1]
             coluna_evolucao = f'Diferença {ano_anterior}-{ano_atual}'
             denominador = df_pivot[ano_anterior].replace(0, pd.NA)
             df_pivot[coluna_evolucao] = (df_pivot[ano_atual] - df_pivot[ano_anterior]) / denominador * 100
 
-    anos_int = sorted([col for col in df_pivot.columns if isinstance(col, int)])
-    
-    ano_corrente_cagr = pd.Timestamp.now().year
-    anos_para_cagr = [ano for ano in anos_int if ano != ano_corrente_cagr]
-
+    anos_para_cagr = [ano for ano in anos_int if ano != ano_corrente]
     if len(anos_para_cagr) >= 3:
         valor_inicial = df_pivot[anos_para_cagr[0]]
         valor_final = df_pivot[anos_para_cagr[-1]]
         df_pivot['Tendência (CAGR %)'] = calcular_cagr(valor_inicial, valor_final, len(anos_para_cagr))
+
+    if ano_corrente in df_pivot.columns:
+        df_pivot.rename(columns={ano_corrente: f'{ano_corrente} (Parcial)'}, inplace=True)
 
     ordem_colunas = []
     if anos_int:
@@ -1020,16 +1039,23 @@ def criar_tabela_total_feminicidio(df):
         for i in range(1, len(anos_int)):
             ano_anterior = anos_int[i-1]
             ano_atual = anos_int[i]
-            ordem_colunas.append(ano_atual)
+
+            if ano_atual == ano_corrente:
+                ordem_colunas.append(f'{ano_atual} (Parcial)')
+            else:
+                ordem_colunas.append(ano_atual)
+
             coluna_evolucao = f'Diferença {ano_anterior}-{ano_atual}'
             if coluna_evolucao in df_pivot.columns:
                 ordem_colunas.append(coluna_evolucao)
-    
+
     ordem_colunas.append('total')
     if 'Tendência (CAGR %)' in df_pivot.columns:
         ordem_colunas.append('Tendência (CAGR %)')
 
-    df_consolidado = df_pivot[ordem_colunas].reset_index(drop=True)
+    ordem_final = [col for col in ordem_colunas if col in df_pivot.columns]
+
+    df_consolidado = df_pivot[ordem_final].reset_index(drop=True)
     df_consolidado.insert(0, 'Tipo de Crime', 'Feminicídio')
     
     return df_consolidado
@@ -1503,6 +1529,8 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             with st.expander("Como interpretar este gráfico?"):
                 st.info("Mostra o total de ocorrências em cada ano do período selecionado, permitindo uma visão macro da evolução anual do problema.")
             chart_type_ano = st.selectbox("Tipo de Gráfico", ("Barras", "Pizza", "Linha", "Área"), key="chart_type_ano")
+            
+            ano_corrente = pd.Timestamp.now().year
             if agrupamento_selecionado == "Consolidado":
                 registros_por_ano = df_geral_filtrado['ano'].value_counts().sort_index().reset_index()
                 registros_por_ano.columns = ['ano', 'Quantidade']
@@ -1512,6 +1540,12 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                 coluna_agrupamento = mapa_agrupamento_tabela[agrupamento_selecionado]
                 registros_por_ano = df_geral_filtrado.groupby(['ano', coluna_agrupamento]).size().reset_index(name='Quantidade')
                 color_param = coluna_agrupamento
+            
+            if not registros_por_ano.empty:
+                registros_por_ano['ano'] = registros_por_ano['ano'].apply(
+                    lambda x: f'{x} (Parcial)' if x == ano_corrente else str(x)
+                )
+
             if chart_type_ano == "Barras":
                 fig_ano = px.bar(registros_por_ano, x='ano', y='Quantidade', color=color_param, labels={'ano': 'Ano', 'Quantidade': 'Quantidade'}, template='plotly_white', text='Quantidade')
                 if agrupamento_selecionado == "Consolidado": fig_ano.update_traces(marker_color='#8A2BE2')
@@ -1653,12 +1687,23 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     # --- EXIBIÇÃO DA TABELA ---
                     colunas_evolucao = [col for col in tabela_consolidada.columns if 'Diferença' in str(col)]
                     format_dict = {col: formatar_seta_percentual for col in colunas_evolucao}
-                    anos_int = [col for col in tabela_consolidada.columns if isinstance(col, int)]
-                    for ano in anos_int: format_dict[ano] = '{:.0f}'
+                    
+                    ano_corrente_parcial = f'{pd.Timestamp.now().year} (Parcial)'
+                    colunas_de_anos = [col for col in tabela_consolidada.columns if isinstance(col, int)]
+                    if ano_corrente_parcial in tabela_consolidada.columns:
+                        colunas_de_anos.append(ano_corrente_parcial)
+
+                    for col in colunas_de_anos:
+                        format_dict[col] = '{:.0f}'
                     format_dict['total'] = '{:.0f}'
-                    if 'Tendência (CAGR %)' in tabela_consolidada.columns: format_dict['Tendência (CAGR %)'] = '{:+.1f}%'
+
+                    if 'Tendência (CAGR %)' in tabela_consolidada.columns:
+                        format_dict['Tendência (CAGR %)'] = '{:+.1f}%'
+
                     colunas_para_colorir = colunas_evolucao[:]
-                    if 'Tendência (CAGR %)' in tabela_consolidada.columns: colunas_para_colorir.append('Tendência (CAGR %)')
+                    if 'Tendência (CAGR %)' in tabela_consolidada.columns:
+                        colunas_para_colorir.append('Tendência (CAGR %)')
+                    
                     styler = tabela_consolidada.style.applymap(colorir_percentual, subset=colunas_para_colorir).format(format_dict)
                     st.dataframe(styler, use_container_width=True)
                 else: st.warning("Não há dados para exibir na tabela consolidada com os filtros selecionados.")
@@ -1707,12 +1752,23 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     # --- EXIBIÇÃO DA TABELA ---
                     colunas_evolucao = [col for col in tabela_total.columns if 'Diferença' in str(col)]
                     format_dict = {col: formatar_seta_percentual for col in colunas_evolucao}
-                    anos_int = [col for col in tabela_total.columns if isinstance(col, int)]
-                    for ano in anos_int: format_dict[ano] = '{:.0f}'
+                    
+                    ano_corrente_parcial = f'{pd.Timestamp.now().year} (Parcial)'
+                    colunas_de_anos = [col for col in tabela_total.columns if isinstance(col, int)]
+                    if ano_corrente_parcial in tabela_total.columns:
+                        colunas_de_anos.append(ano_corrente_parcial)
+
+                    for col in colunas_de_anos:
+                        format_dict[col] = '{:.0f}'
                     format_dict['total'] = '{:.0f}'
-                    format_dict['Tendência (CAGR %)'] = '{:+.1f}%'
+                    
+                    if 'Tendência (CAGR %)' in tabela_total.columns:
+                        format_dict['Tendência (CAGR %)'] = '{:+.1f}%'
+                    
                     colunas_para_colorir = colunas_evolucao[:]
-                    if 'Tendência (CAGR %)' in tabela_total.columns: colunas_para_colorir.append('Tendência (CAGR %)')
+                    if 'Tendência (CAGR %)' in tabela_total.columns:
+                        colunas_para_colorir.append('Tendência (CAGR %)')
+                        
                     styler = tabela_total.style.applymap(colorir_percentual, subset=colunas_para_colorir).format(format_dict)
                     st.dataframe(styler, use_container_width=True)
                 else: st.warning("Não há dados para exibir na tabela consolidada com os filtros selecionados.")
@@ -1841,6 +1897,8 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
         with st.expander("Como interpretar este gráfico?"):
             st.info("Apresenta o total de feminicídios a cada ano, oferecendo uma visão clara da tendência de longo prazo para o crime mais extremo de violência contra a mulher.")
         chart_type_fem_ano = st.selectbox("Tipo de Gráfico", ("Barras", "Linha", "Área"), key="chart_type_fem_ano")
+        
+        ano_corrente = pd.Timestamp.now().year
         if agrupamento_selecionado == "Consolidado":
             feminicidios_por_ano = df_feminicidio_filtrado['ano'].value_counts().sort_index().reset_index()
             feminicidios_por_ano.columns = ['ano', 'Quantidade']
@@ -1850,6 +1908,12 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             coluna_agrupamento = mapa_agrupamento_tabela[agrupamento_selecionado]
             feminicidios_por_ano = df_feminicidio_filtrado.groupby(['ano', coluna_agrupamento]).size().reset_index(name='Quantidade')
             color_param = coluna_agrupamento
+
+        if not feminicidios_por_ano.empty:
+            feminicidios_por_ano['ano'] = feminicidios_por_ano['ano'].apply(
+                lambda x: f'{x} (Parcial)' if x == ano_corrente else str(x)
+            )
+
         if chart_type_fem_ano == "Linha":
             fig_ano_fem = px.line(feminicidios_por_ano, x='ano', y='Quantidade', color=color_param, labels={'ano': 'Ano', 'Quantidade': 'Quantidade'}, template='plotly_white', markers=True)
             if agrupamento_selecionado == "Consolidado": fig_ano_fem.update_traces(line_color='#6a1b9a')
@@ -2171,12 +2235,23 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     # --- EXIBIÇÃO DA TABELA ---
                     colunas_evolucao = [col for col in tabela_feminicidio.columns if 'Diferença' in str(col)]
                     format_dict = {col: formatar_seta_percentual for col in colunas_evolucao}
-                    anos_int = [col for col in tabela_feminicidio.columns if isinstance(col, int)]
-                    for ano in anos_int: format_dict[ano] = '{:.0f}'
+                    
+                    ano_corrente_parcial = f'{pd.Timestamp.now().year} (Parcial)'
+                    colunas_de_anos = [col for col in tabela_feminicidio.columns if isinstance(col, int)]
+                    if ano_corrente_parcial in tabela_feminicidio.columns:
+                        colunas_de_anos.append(ano_corrente_parcial)
+
+                    for col in colunas_de_anos:
+                        format_dict[col] = '{:.0f}'
                     format_dict['total'] = '{:.0f}'
-                    format_dict['Tendência (CAGR %)'] = '{:+.1f}%'
+
+                    if 'Tendência (CAGR %)' in tabela_feminicidio.columns:
+                        format_dict['Tendência (CAGR %)'] = '{:+.1f}%'
+
                     colunas_para_colorir = colunas_evolucao[:]
-                    if 'Tendência (CAGR %)' in tabela_feminicidio.columns: colunas_para_colorir.append('Tendência (CAGR %)')
+                    if 'Tendência (CAGR %)' in tabela_feminicidio.columns:
+                        colunas_para_colorir.append('Tendência (CAGR %)')
+
                     styler = tabela_feminicidio.style.applymap(colorir_percentual, subset=colunas_para_colorir).format(format_dict)
                     st.dataframe(styler, use_container_width=True)
                 else: st.warning("Não há dados para exibir na tabela de feminicídios com os filtros selecionados.")
@@ -2225,12 +2300,23 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     # --- EXIBIÇÃO DA TABELA ---
                     colunas_evolucao = [col for col in tabela_total_fem.columns if 'Diferença' in str(col)]
                     format_dict = {col: formatar_seta_percentual for col in colunas_evolucao}
-                    anos_int = [col for col in tabela_total_fem.columns if isinstance(col, int)]
-                    for ano in anos_int: format_dict[ano] = '{:.0f}'
+                    
+                    ano_corrente_parcial = f'{pd.Timestamp.now().year} (Parcial)'
+                    colunas_de_anos = [col for col in tabela_total_fem.columns if isinstance(col, int)]
+                    if ano_corrente_parcial in tabela_total_fem.columns:
+                        colunas_de_anos.append(ano_corrente_parcial)
+                        
+                    for col in colunas_de_anos:
+                        format_dict[col] = '{:.0f}'
                     format_dict['total'] = '{:.0f}'
-                    format_dict['Tendência (CAGR %)'] = '{:+.1f}%'
+
+                    if 'Tendência (CAGR %)' in tabela_total_fem.columns:
+                        format_dict['Tendência (CAGR %)'] = '{:+.1f}%'
+                        
                     colunas_para_colorir = colunas_evolucao[:]
-                    if 'Tendência (CAGR %)' in tabela_total_fem.columns: colunas_para_colorir.append('Tendência (CAGR %)')
+                    if 'Tendência (CAGR %)' in tabela_total_fem.columns:
+                        colunas_para_colorir.append('Tendência (CAGR %)')
+                        
                     styler = tabela_total_fem.style.applymap(colorir_percentual, subset=colunas_para_colorir).format(format_dict)
                     st.dataframe(styler, use_container_width=True)
                 else: st.warning("Não há dados para exibir na tabela de feminicídios com os filtros selecionados.")
