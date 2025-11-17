@@ -44,18 +44,18 @@ def generate_pdf(df, title):
     
     # Título
     pdf.set_font('Arial', 'B', 16)
-    # Use encode('latin-1', 'replace') to handle potential unsupported characters in the title
+    # Safely encode the title to handle special characters
     pdf.cell(0, 10, title.encode('latin-1', 'replace').decode('latin-1'), 0, 1, 'C')
     pdf.ln(10)
     
     # Tabela
     pdf.set_font('Arial', 'B', 8)
     
-    # Prepara os dados do DataFrame, ensuring all data is string
+    # Prepare DataFrame data, ensuring everything is a string
     cols = [str(col) for col in df.columns]
     data = [[str(item) for item in row] for row in df.values.tolist()]
     
-    # Calcula a largura das colunas
+    # Calculate column widths
     col_widths = []
     for col in cols:
         col_widths.append(pdf.get_string_width(col) + 6)
@@ -66,31 +66,30 @@ def generate_pdf(df, title):
             if width > col_widths[i]:
                 col_widths[i] = width
 
-    page_width = 277 # Largura da página A4 em 'L' menos margens
+    page_width = 277 # A4 landscape width minus margins
     total_width = sum(col_widths)
     
-    # Se a tabela for muito larga, ajusta as colunas proporcionalmente
+    # If the table is too wide, adjust columns proportionally
     if total_width > page_width:
         ratio = page_width / total_width
         col_widths = [w * ratio for w in col_widths]
 
-    # Cabeçalho da Tabela
-    pdf.set_fill_color(74, 20, 140) # Roxo
+    # Table Header
+    pdf.set_fill_color(74, 20, 140) # Purple
     pdf.set_text_color(255, 255, 255)
     for i, col in enumerate(cols):
-        # Handle potential special characters in column headers
         col_encoded = col.encode('latin-1', 'replace').decode('latin-1')
         pdf.cell(col_widths[i], 10, col_encoded, 1, 0, 'C', 1)
     pdf.ln()
 
-    # Corpo da Tabela
+    # Table Body
     pdf.set_font('Arial', '', 8)
     pdf.set_text_color(0, 0, 0)
     for row in data:
-        # Check if the next row fits on the page, otherwise add a new page
-        if pdf.get_y() > 190: # 210mm (A4 height) - 20mm margin
+        # Auto page break logic
+        if pdf.get_y() > 190: # y position threshold before adding a new page
             pdf.add_page()
-            # Re-draw header on new page
+            # Redraw header on the new page
             pdf.set_font('Arial', 'B', 8)
             pdf.set_fill_color(74, 20, 140)
             pdf.set_text_color(255, 255, 255)
@@ -100,17 +99,23 @@ def generate_pdf(df, title):
             pdf.ln()
             pdf.set_font('Arial', '', 8)
             pdf.set_text_color(0, 0, 0)
-
+            
         for i, item in enumerate(row):
-            # Handle potential special characters in cell data
             item_encoded = item.encode('latin-1', 'replace').decode('latin-1')
             pdf.cell(col_widths[i], 10, item_encoded, 1, 0, 'C')
         pdf.ln()
         
-    # --- CORREÇÃO APLICADA AQUI ---
-    # 1. Use dest='S' to explicitly ask for a string output.
-    # 2. Encode this string into bytes using 'latin-1' for Streamlit.
-    return pdf.output(dest='S').encode('latin-1')
+    # --- FINAL ROBUST SOLUTION ---
+    # The fpdf library's output type can be inconsistent (str or bytes).
+    # This code checks the type and handles both cases to ensure it always works.
+    pdf_output = pdf.output(dest='S')
+
+    if isinstance(pdf_output, str):
+        # If the output is a string, we MUST encode it to bytes for Streamlit.
+        return pdf_output.encode('latin-1')
+    else:
+        # If the output is already bytes, we return it directly.
+        return pdf_output
 
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
