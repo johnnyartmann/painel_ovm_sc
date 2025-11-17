@@ -6,5 +6,6 @@ statsmodels
 shapely
 numpy
 unicodedata2
-openpyxl
 matplotlib
+fpdf2
+kaleido
