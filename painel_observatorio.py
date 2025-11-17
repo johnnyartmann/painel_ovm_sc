@@ -1810,22 +1810,42 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                 if total_agressores > 0:
                     fig_sankey = go.Figure(data=[go.Sankey(
                         node=dict(
-                            pad=15,
-                            thickness=20,
-                            line=dict(color="black", width=0.5),
+                            pad=20,
+                            thickness=25,
+                            line=dict(color="white", width=2),
                             label=["Total de Agressores", "Com Passagem Policial", "Sem Passagem Policial", "Com B.O. por Violência Doméstica", "Com B.O. por Outros Crimes"],
-                            color=["#4a148c", "#8e24aa", "#e0e0e0", "#ab47bc", "#ce93d8"]
+                            color=["#4a148c", "#d32f2f", "#757575", "#e91e63", "#ff6f00"],
                         ),
                         link=dict(
                             source=[0, 0, 1, 1],
                             target=[1, 2, 3, 4],
                             value=[com_passagem, sem_passagem, com_bo_vd, com_bo_outros],
-                            color=["rgba(142, 36, 170, 0.6)", "rgba(189, 189, 189, 0.6)", "rgba(171, 71, 188, 0.6)", "rgba(206, 147, 216, 0.6)"]
-                        ))])
+                            color=["rgba(211, 47, 47, 0.4)", "rgba(117, 117, 117, 0.3)", "rgba(233, 30, 99, 0.5)", "rgba(255, 111, 0, 0.4)"]
+                        ),
+                        textfont=dict(
+                            family="Inter, sans-serif",
+                            size=14,
+                            color="white"
+                        )
+                    )])
 
                     fig_sankey.update_layout(
-                        title_text="Histórico do Agressor: A Escalada da Violência",
-                        font_size=12
+                        title={
+                            'text': "Histórico do Agressor: A Escalada da Violência",
+                            'font': {'size': 16, 'family': 'Inter, sans-serif', 'color': '#4a148c'}
+                    },
+                    font=dict(size=13, family="Inter, sans-serif"),
+                    plot_bgcolor='white',
+                    paper_bgcolor='white',
+                    height=500
+                    )
+
+                    fig_sankey.add_annotation(
+                        text="Fluxo da esquerda para direita mostra a progressão do histórico criminal",
+                        xref="paper", yref="paper",
+                        x=0.5, y=-0.1,
+                        showarrow=False,
+                        font=dict(size=11, color="#666")
                     )
                     st.plotly_chart(fig_sankey, use_container_width=True, key="sankey_fem")
                 else:
