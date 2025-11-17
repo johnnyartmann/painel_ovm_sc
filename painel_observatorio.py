@@ -7,14 +7,8 @@ import unicodedata
 import numpy as np
 import re
 from shapely.geometry import shape, Point
-import io # Adicionado para manipulação de bytes em memória
-
-# --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(
-    page_title="Observatório da Violência Contra a Mulher - SC",
-    page_icon="💜",
-    layout="wide"
-)
+import io
+from fpdf import FPDF
 
 # --- FUNÇÕES DE EXPORTAÇÃO ---
 
@@ -27,54 +21,82 @@ def to_excel(df):
     processed_data = output.getvalue()
     return processed_data
 
-def adicionar_downloads_tabela(df, nome_arquivo):
-    """
-    Adiciona botões de download para um DataFrame nos formatos CSV e Excel.
+@st.cache_data
+def to_csv(df):
+    """Converte um DataFrame para um arquivo CSV em memória."""
+    return df.to_csv(index=False).encode('utf-8')
+
+class PDF(FPDF):
+    def header(self):
+        self.set_font('Arial', 'B', 12)
+        self.cell(0, 10, 'Relatorio Gerado pelo Observatorio da Violencia', 0, 1, 'C')
+        self.ln(5)
+
+    def footer(self):
+        self.set_y(-15)
+        self.set_font('Arial', 'I', 8)
+        self.cell(0, 10, f'Pagina {self.page_no()}', 0, 0, 'C')
+
+def generate_pdf(df, title):
+    """Gera um PDF a partir de um DataFrame."""
+    pdf = PDF(orientation='L', unit='mm', format='A4')
+    pdf.add_page()
     
-    Args:
-        df (pd.DataFrame): O DataFrame a ser baixado.
-        nome_arquivo (str): O nome base para os arquivos de download (sem extensão).
-    """
-    if not df.empty:
-        col1, col2, _ = st.columns([1, 1, 5])
-
-        # Download CSV
-        csv = df.to_csv(index=False).encode('utf-8')
-        with col1:
-            st.download_button(
-                label="📥 Exportar para CSV",
-                data=csv,
-                file_name=f'{nome_arquivo}.csv',
-                mime='text/csv',
-                use_container_width=True
-            )
-
-        # Download Excel
-        excel_data = to_excel(df)
-        with col2:
-            st.download_button(
-                label="📊 Exportar para Excel",
-                data=excel_data,
-                file_name=f'{nome_arquivo}.xlsx',
-                mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                use_container_width=True
-            )
-
-def adicionar_download_grafico(fig, nome_arquivo):
-    """
-    Adiciona um botão de download para salvar uma figura Plotly como imagem PNG.
+    # Título
+    pdf.set_font('Arial', 'B', 16)
+    pdf.cell(0, 10, title, 0, 1, 'C')
+    pdf.ln(10)
     
-    Args:
-        fig: A figura Plotly a ser salva.
-        nome_arquivo (str): O nome para o arquivo de imagem (sem extensão).
-    """
-    img_bytes = fig.to_image(format="png", scale=2)
-    st.download_button(
-        label="🖼️ Salvar Gráfico como Imagem",
-        data=img_bytes,
-        file_name=f"{nome_arquivo}.png",
-        mime="image/png"
-    )
+    # Tabela
+    pdf.set_font('Arial', 'B', 8)
+    
+    # Prepara os dados do DataFrame
+    cols = df.columns.tolist()
+    data = df.values.tolist()
+    
+    # Calcula a largura das colunas
+    col_widths = []
+    for col in cols:
+        col_widths.append(pdf.get_string_width(str(col)) + 6)
+        
+    for row in data:
+        for i, item in enumerate(row):
+            width = pdf.get_string_width(str(item)) + 6
+            if width > col_widths[i]:
+                col_widths[i] = width
+
+    page_width = 277 # Largura da página A4 em 'L' menos margens
+    total_width = sum(col_widths)
+    
+    # Se a tabela for muito larga, ajusta as colunas proporcionalmente
+    if total_width > page_width:
+        ratio = page_width / total_width
+        col_widths = [w * ratio for w in col_widths]
+
+    # Cabeçalho da Tabela
+    pdf.set_fill_color(74, 20, 140) # Roxo
+    pdf.set_text_color(255, 255, 255)
+    for i, col in enumerate(cols):
+        pdf.cell(col_widths[i], 10, str(col), 1, 0, 'C', 1)
+    pdf.ln()
+
+    # Corpo da Tabela
+    pdf.set_font('Arial', '', 8)
+    pdf.set_text_color(0, 0, 0)
+    for row in data:
+        for i, item in enumerate(row):
+            pdf.cell(col_widths[i], 10, str(item), 1, 0, 'C')
+        pdf.ln()
+        
+    return pdf.output(dest='S').encode('latin-1')
+
+
+# --- CONFIGURAÇÃO DA PÁGINA ---
+st.set_page_config(
+    page_title="Observatório da Violência Contra a Mulher - SC",
+    page_icon="💜",
+    layout="wide"
+)
 
 # --- CSS CUSTOMIZADO ---
 st.markdown("""
@@ -1405,7 +1427,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
         fig_mapa = px.choropleth_mapbox(map_df, geojson=geojson_sc, locations='municipio_normalizado', featureidkey="properties.NM_MUN_NORMALIZADO", color=color_col, color_continuous_scale="Purples", mapbox_style="carto-positron", zoom=6, center={"lat": -27.59, "lon": -50.52}, opacity=0.7, labels={color_col: label_text})
         fig_mapa.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, coloraxis_showscale=True, coloraxis_colorbar=dict(orientation="h", yanchor="bottom", y=-0.1, xanchor="center", x=0.5))
         st.plotly_chart(fig_mapa, use_container_width=True, key="mapa_geral")
-        adicionar_download_grafico(fig_mapa, f"mapa_distribuicao_{view_type.lower().replace(' ', '_')}")
         st.markdown("---")
 
         # Evolução dos Registros de Ocorrências (Série Temporal)
@@ -1439,7 +1460,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             fig_temporal = px.line(registros_por_mes_ano, x='ano_mes', y='quantidade', color=color_param_temporal, labels={'ano_mes': 'Mês/Ano', 'quantidade': 'Quantidade de Registros'}, template='plotly_white', markers=True)
             if agrupamento_selecionado == "Consolidado": fig_temporal.update_traces(line_color='#8A2BE2')
         st.plotly_chart(fig_temporal, use_container_width=True, key="temporal_geral")
-        adicionar_download_grafico(fig_temporal, "grafico_serie_historica_ocorrencias")
         st.markdown("---")
         
         # Distribuição de Ocorrências por Dia da Semana
@@ -1473,7 +1493,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             fig_dia_semana = px.pie(registros_por_dia, names='Dia da Semana', values='Quantidade', hole=.4, color_discrete_sequence=px.colors.sequential.Purples_r)
             fig_dia_semana.update_traces(textinfo='percent+label', textposition='outside')
         st.plotly_chart(fig_dia_semana, use_container_width=True, key="dia_semana_geral")
-        adicionar_download_grafico(fig_dia_semana, "grafico_distribuicao_dia_semana")
         st.markdown("---")
         
         # Gráficos em colunas
@@ -1508,7 +1527,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                 fig_ano = px.pie(registros_por_ano, names=pie_names, values='Quantidade', hole=.4, color_discrete_sequence=px.colors.sequential.Purples_r)
                 fig_ano.update_traces(textinfo='percent+label', textposition='outside')
             st.plotly_chart(fig_ano, use_container_width=True, key="ano_geral")
-            adicionar_download_grafico(fig_ano, "grafico_ocorrencias_por_ano")
         
         with col_graf2:
             # Distribuição de Ocorrências por Mês
@@ -1535,7 +1553,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                 fig_mes = px.pie(registros_por_mes, names='Mês', values='Quantidade', hole=.4, color_discrete_sequence=px.colors.sequential.Purples_r)
                 fig_mes.update_traces(textinfo='percent+label', textposition='outside', sort=False)
             st.plotly_chart(fig_mes, use_container_width=True, key="mes_geral")
-            adicionar_download_grafico(fig_mes, "grafico_ocorrencias_por_mes")
         
         st.markdown("---")
         
@@ -1560,7 +1577,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                 fig_faixa_etaria = px.pie(registros_por_faixa, names='Faixa Etária', values='Quantidade', hole=.4, color_discrete_sequence=px.colors.sequential.Purples_r)
                 fig_faixa_etaria.update_traces(textinfo='percent+label', textposition='outside')
             st.plotly_chart(fig_faixa_etaria, use_container_width=True, key="faixa_etaria_geral")
-            adicionar_download_grafico(fig_faixa_etaria, "grafico_distribuicao_faixa_etaria")
         
         with col_graf4:
             # Tipos de Crimes Mais Frequentes
@@ -1587,7 +1603,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                 fig_fato = px.pie(registros_por_fato, names=pie_names, values='Quantidade', hole=.4, color_discrete_sequence=px.colors.sequential.Purples_r)
                 fig_fato.update_traces(textinfo='percent+label', textposition='outside')
             st.plotly_chart(fig_fato, use_container_width=True, key="fato_geral")
-            adicionar_download_grafico(fig_fato, "grafico_natureza_ocorrencias")
 
         st.markdown("---")
         
@@ -1607,6 +1622,35 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             if not df_geral_filtrado.empty:
                 tabela_consolidada = criar_tabela_consolidada(df_geral_filtrado, coluna_agrupamento_tabela, agrupamento_selecionado)
                 if not tabela_consolidada.empty:
+                    # --- BOTÕES DE DOWNLOAD ---
+                    st.markdown("##### Exportar Dados da Tabela")
+                    col1_export, col2_export, col3_export = st.columns(3)
+                    with col1_export:
+                        st.download_button(
+                            label="📥 Exportar para CSV",
+                            data=to_csv(tabela_consolidada),
+                            file_name=f'ocorrencias_por_{agrupamento_selecionado}.csv',
+                            mime='text/csv',
+                            key='csv_consolidada_geral'
+                        )
+                    with col2_export:
+                        st.download_button(
+                            label="📥 Exportar para Excel",
+                            data=to_excel(tabela_consolidada),
+                            file_name=f'ocorrencias_por_{agrupamento_selecionado}.xlsx',
+                            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                            key='excel_consolidada_geral'
+                        )
+                    with col3_export:
+                        st.download_button(
+                            label="📄 Gerar PDF da Tabela",
+                            data=generate_pdf(tabela_consolidada, f"Ocorrencias por {agrupamento_selecionado}"),
+                            file_name=f'ocorrencias_por_{agrupamento_selecionado}.pdf',
+                            mime='application/pdf',
+                            key='pdf_consolidada_geral'
+                        )
+                    
+                    # --- EXIBIÇÃO DA TABELA ---
                     colunas_evolucao = [col for col in tabela_consolidada.columns if 'Diferença' in str(col)]
                     format_dict = {col: formatar_seta_percentual for col in colunas_evolucao}
                     anos_int = [col for col in tabela_consolidada.columns if isinstance(col, int)]
@@ -1617,7 +1661,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     if 'Tendência (CAGR %)' in tabela_consolidada.columns: colunas_para_colorir.append('Tendência (CAGR %)')
                     styler = tabela_consolidada.style.applymap(colorir_percentual, subset=colunas_para_colorir).format(format_dict)
                     st.dataframe(styler, use_container_width=True)
-                    adicionar_downloads_tabela(tabela_consolidada, f"tabela_consolidada_{agrupamento_selecionado.lower()}")
                 else: st.warning("Não há dados para exibir na tabela consolidada com os filtros selecionados.")
             else: st.warning("Não há dados para exibir na tabela consolidada com os filtros selecionados.")
         else:
@@ -1633,6 +1676,35 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             if not df_geral_filtrado.empty:
                 tabela_total = criar_tabela_total_consolidada(df_geral_filtrado)
                 if not tabela_total.empty:
+                    # --- BOTÕES DE DOWNLOAD ---
+                    st.markdown("##### Exportar Dados da Tabela")
+                    col1_export, col2_export, col3_export = st.columns(3)
+                    with col1_export:
+                        st.download_button(
+                            label="📥 Exportar para CSV",
+                            data=to_csv(tabela_total),
+                            file_name='ocorrencias_consolidadas_sc.csv',
+                            mime='text/csv',
+                            key='csv_total_geral'
+                        )
+                    with col2_export:
+                        st.download_button(
+                            label="📥 Exportar para Excel",
+                            data=to_excel(tabela_total),
+                            file_name='ocorrencias_consolidadas_sc.xlsx',
+                            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                            key='excel_total_geral'
+                        )
+                    with col3_export:
+                        st.download_button(
+                            label="📄 Gerar PDF da Tabela",
+                            data=generate_pdf(tabela_total, "Ocorrencias Consolidadas (SC)"),
+                            file_name='ocorrencias_consolidadas_sc.pdf',
+                            mime='application/pdf',
+                            key='pdf_total_geral'
+                        )
+                        
+                    # --- EXIBIÇÃO DA TABELA ---
                     colunas_evolucao = [col for col in tabela_total.columns if 'Diferença' in str(col)]
                     format_dict = {col: formatar_seta_percentual for col in colunas_evolucao}
                     anos_int = [col for col in tabela_total.columns if isinstance(col, int)]
@@ -1643,7 +1715,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     if 'Tendência (CAGR %)' in tabela_total.columns: colunas_para_colorir.append('Tendência (CAGR %)')
                     styler = tabela_total.style.applymap(colorir_percentual, subset=colunas_para_colorir).format(format_dict)
                     st.dataframe(styler, use_container_width=True)
-                    adicionar_downloads_tabela(tabela_total, "tabela_consolidada_total_sc")
                 else: st.warning("Não há dados para exibir na tabela consolidada com os filtros selecionados.")
             else: st.warning("Não há dados para exibir na tabela consolidada com os filtros selecionados.")
 
@@ -1662,8 +1733,39 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
         anos_no_filtro = df_geral_filtrado['ano'].unique()
         num_anos = len(anos_no_filtro) if len(anos_no_filtro) > 0 else 1
         tabela_populacional = criar_tabela_populacional_agrupada(df_geral_filtrado, df_populacao, df_regioes, agrupamento_selecionado, num_anos)
+        
+        # --- BOTÕES DE DOWNLOAD PARA TABELA POPULACIONAL ---
+        if not tabela_populacional.empty:
+            df_para_exportar_pop = tabela_populacional.reset_index()
+            st.markdown("##### Exportar Dados da Tabela")
+            col1_export_pop, col2_export_pop, col3_export_pop = st.columns(3)
+            with col1_export_pop:
+                st.download_button(
+                    label="📥 Exportar para CSV",
+                    data=to_csv(df_para_exportar_pop),
+                    file_name=f'taxa_populacional_{agrupamento_selecionado}.csv',
+                    mime='text/csv',
+                    key='csv_populacional'
+                )
+            with col2_export_pop:
+                st.download_button(
+                    label="📥 Exportar para Excel",
+                    data=to_excel(df_para_exportar_pop),
+                    file_name=f'taxa_populacional_{agrupamento_selecionado}.xlsx',
+                    mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    key='excel_populacional'
+                )
+            with col3_export_pop:
+                st.download_button(
+                    label="📄 Gerar PDF da Tabela",
+                    data=generate_pdf(df_para_exportar_pop, f"Taxa Populacional por {agrupamento_selecionado}"),
+                    file_name=f'taxa_populacional_{agrupamento_selecionado}.pdf',
+                    mime='application/pdf',
+                    key='pdf_populacional'
+                )
+                
+        # --- EXIBIÇÃO DA TABELA ---
         st.dataframe(tabela_populacional.style.format({'Média Anual de Fatos Ocorridos': '{:.2f}', 'Fatos por Mil Mulheres (anual)': '{:.2f}', '% de Mulheres Vítimas (anual)': '{:.2f}%', 'População Feminina': '{:,.0f}', 'Tendência (CAGR %)': '{:+.1f}%'}), use_container_width=True)
-        adicionar_downloads_tabela(tabela_populacional.reset_index(), f"tabela_populacional_{agrupamento_selecionado.lower()}")
 
 
     # --- ABA: ANÁLISE DE FEMINICÍDIOS (REORGANIZADA) ---
@@ -1704,7 +1806,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
         fig_mapa_fem = px.choropleth_mapbox(map_df_fem, geojson=geojson_sc, locations='municipio_normalizado', featureidkey="properties.NM_MUN_NORMALIZADO", color='quantidade', color_continuous_scale="Reds", mapbox_style="carto-positron", zoom=6, center={"lat": -27.59, "lon": -50.52}, opacity=0.7, labels={'quantidade': f'Total de Feminicídios ({agrupamento_selecionado})'})
         fig_mapa_fem.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, coloraxis_showscale=True, coloraxis_colorbar=dict(orientation="h", yanchor="bottom", y=-0.1, xanchor="center", x=0.5))
         st.plotly_chart(fig_mapa_fem, use_container_width=True, key="mapa_fem")
-        adicionar_download_grafico(fig_mapa_fem, "mapa_distribuicao_feminicidios")
         st.markdown("---")
 
         # Quantidade de Feminicídios por Mês/Ano
@@ -1733,7 +1834,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             if agrupamento_selecionado == "Consolidado": fig_mes_ano.update_traces(marker_color='#8A2BE2')
             fig_mes_ano.update_traces(textposition='outside')
         st.plotly_chart(fig_mes_ano, use_container_width=True, key="mes_ano_fem")
-        adicionar_download_grafico(fig_mes_ano, "grafico_feminicidios_mes_ano")
         st.markdown("---")
 
         # Quantidade de Feminicídios por Ano
@@ -1761,7 +1861,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             if agrupamento_selecionado == "Consolidado": fig_ano_fem.update_traces(marker_color='#6a1b9a')
             fig_ano_fem.update_traces(textposition='outside')
         st.plotly_chart(fig_ano_fem, use_container_width=True, key="ano_fem")
-        adicionar_download_grafico(fig_ano_fem, "grafico_feminicidios_por_ano")
         st.markdown("---")
         
         # Vínculo e B.O.
@@ -1790,7 +1889,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                 fig_vinculo = px.pie(vinculo_autor, names=pie_names, values='Quantidade', hole=.4, color_discrete_sequence=px.colors.sequential.Purples_r)
                 fig_vinculo.update_traces(textinfo='percent+label', textposition='outside')
             st.plotly_chart(fig_vinculo, use_container_width=True, key="vinculo_fem")
-            adicionar_download_grafico(fig_vinculo, "grafico_vinculo_vitima_autor")
 
         with col_graf_fem2:
             st.subheader("Vítima Possuía B.O. contra o Autor?")
@@ -1805,7 +1903,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             else: # Pizza
                 fig_bo = px.pie(bo_contra_autor, names='Resposta', values='Quantidade', hole=0.4, color_discrete_sequence=px.colors.sequential.Purples_r)
             st.plotly_chart(fig_bo, use_container_width=True, key="bo_fem")
-            adicionar_download_grafico(fig_bo, "grafico_vitima_possuia_bo")
         st.markdown("---")
         
         # Idades
@@ -1821,7 +1918,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             else: 
                 fig_idade_vitima = px.violin(df_idade_vitima, y='idade_vitima', labels={'idade_vitima': 'Idade da Vítima'}, template='plotly_white', color_discrete_sequence=['#8e24aa'], box=True, points="all")
             st.plotly_chart(fig_idade_vitima, use_container_width=True, key="idade_vitima_fem")
-            adicionar_download_grafico(fig_idade_vitima, "grafico_idade_vitima_feminicidio")
         
         with col_graf_fem4:
             st.subheader("Distribuição de Idade do Autor")
@@ -1834,7 +1930,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             else:
                 fig_idade_autor = px.violin(df_idade_autor, y='idade_autor', labels={'idade_autor': 'Idade do Autor'}, template='plotly_white', color_discrete_sequence=['#ab47bc'], box=True, points="all")
             st.plotly_chart(fig_idade_autor, use_container_width=True, key="idade_autor_fem")
-            adicionar_download_grafico(fig_idade_autor, "grafico_idade_autor_feminicidio")
         st.markdown("---")
         
         # Raio X do Agressor
@@ -1856,7 +1951,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                 fig_scatter_idade.add_shape(type='line', x0=0, y0=0, x1=max_idade, y1=max_idade, line=dict(color='rgba(255, 0, 0, 0.5)', width=2, dash='dash'), name='Idade Igual')
                 fig_scatter_idade.update_layout(xaxis_title="Idade da Vítima", yaxis_title="Idade do Autor", legend_title="Legenda")
                 st.plotly_chart(fig_scatter_idade, use_container_width=True, key="scatter_idade_fem")
-                adicionar_download_grafico(fig_scatter_idade, "grafico_correlacao_idade_vitima_autor")
             else: st.info("Não há dados suficientes para exibir o gráfico de correlação de idades.")
         with col_raiox2:
             st.markdown("##### Histórico do Agressor: A Escalada da Violência")
@@ -1876,7 +1970,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     fig_sankey = go.Figure(data=[go.Sankey(node=dict(pad=20, thickness=25, line=dict(color="white", width=2), label=["Total de Agressores", "Com Passagem Policial", "Sem Passagem Policial", "Com B.O. por Violência Doméstica", "Com B.O. por Outros Crimes"], color=["#4a148c", "#d32f2f", "#757575", "#e91e63", "#ff6f00"]), link=dict(source=[0, 0, 1, 1], target=[1, 2, 3, 4], value=[com_passagem, sem_passagem, com_bo_vd, com_bo_outros], color=["rgba(211, 47, 47, 0.4)", "rgba(117, 117, 117, 0.3)", "rgba(233, 30, 99, 0.5)", "rgba(255, 111, 0, 0.4)"]), textfont=dict(family="Inter, sans-serif", size=14, color="white"))])
                     fig_sankey.update_layout(font=dict(size=13, family="Inter, sans-serif"), plot_bgcolor='white', paper_bgcolor='white')
                     st.plotly_chart(fig_sankey, use_container_width=True, key="sankey_fem")
-                    adicionar_download_grafico(fig_sankey, "grafico_historico_agressor")
                 else: st.info("Não há dados para exibir o gráfico de histórico do agressor.")
             else: st.info("Não há dados suficientes ou as colunas necessárias não existem para exibir o gráfico de histórico do agressor.")
         st.markdown("---")
@@ -1925,7 +2018,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             )
             
             st.plotly_chart(fig_heatmap_cruzado, use_container_width=True, key="heatmap_cruzado_fem")
-            adicionar_download_grafico(fig_heatmap_cruzado, "heatmap_cruzado_idade_vitima_autor")
         else:
             st.info("Não há dados suficientes (com idade da vítima e do autor) para gerar a análise cruzada.")
 
@@ -1956,7 +2048,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                 fig_meio = px.pie(meio_crime, names=pie_names, values='Quantidade', hole=.4, color_discrete_sequence=px.colors.sequential.Purples_r)
                 fig_meio.update_traces(textinfo='percent+label', textposition='outside')
             st.plotly_chart(fig_meio, use_container_width=True, key="meio_fem")
-            adicionar_download_grafico(fig_meio, "grafico_meio_crime_feminicidio")
         
         with col_graf_fem6:
             st.subheader("Autor Foi Preso?")
@@ -1971,7 +2062,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             else: # Pizza
                 fig_preso = px.pie(autor_preso, names='Resposta', values='Quantidade', hole=0.4, color_discrete_sequence=px.colors.sequential.Purples_r)
             st.plotly_chart(fig_preso, use_container_width=True, key="preso_fem")
-            adicionar_download_grafico(fig_preso, "grafico_status_prisao_autor")
         st.markdown("---")
         
         # Histórico do autor
@@ -1989,7 +2079,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             else: # Pizza
                 fig_autor_bo = px.pie(autor_bo, names='Resposta', values='Quantidade', hole=0.4, color_discrete_sequence=px.colors.sequential.Purples_r)
             st.plotly_chart(fig_autor_bo, use_container_width=True, key="autor_bo_fem")
-            adicionar_download_grafico(fig_autor_bo, "grafico_autor_com_passagem_policial")
 
         with col_graf_fem8:
             st.subheader("Autor com B.O. por Violência Doméstica?")
@@ -2006,7 +2095,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     else: # Pizza
                         fig_autor_bo_vd = px.pie(autor_bo_vd, names='Resposta', values='Quantidade', hole=0.4, color_discrete_sequence=px.colors.sequential.Purples_r)
                     st.plotly_chart(fig_autor_bo_vd, use_container_width=True, key="autor_bo_vd_fem")
-                    adicionar_download_grafico(fig_autor_bo_vd, "grafico_autor_com_bo_violencia_domestica")
                 else: st.info("Não há dados sobre B.O. por violência doméstica para os filtros selecionados.")
             else: st.warning("A coluna 'Passagem por Violência Doméstica' não foi encontrada na base de dados.")
         st.markdown("---")
@@ -2034,7 +2122,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             fig_localidade = px.pie(localidade_crime, names=pie_names, values='Quantidade', hole=.4, color_discrete_sequence=px.colors.sequential.Purples_r)
             fig_localidade.update_traces(textinfo='percent+label', textposition='outside')
         st.plotly_chart(fig_localidade, use_container_width=True, key="localidade_fem")
-        adicionar_download_grafico(fig_localidade, "grafico_localidade_feminicidio")
         st.markdown("---")
         
         # Tabela Consolidada de Feminicídios por Município
@@ -2053,6 +2140,35 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             if not df_feminicidio_filtrado.empty:
                 tabela_feminicidio = criar_tabela_feminicidio_agrupado(df_feminicidio_filtrado, coluna_agrupamento_tabela, agrupamento_selecionado)
                 if not tabela_feminicidio.empty:
+                    # --- BOTÕES DE DOWNLOAD ---
+                    st.markdown("##### Exportar Dados da Tabela")
+                    col1_export_fem, col2_export_fem, col3_export_fem = st.columns(3)
+                    with col1_export_fem:
+                        st.download_button(
+                            label="📥 Exportar para CSV",
+                            data=to_csv(tabela_feminicidio),
+                            file_name=f'feminicidios_por_{agrupamento_selecionado}.csv',
+                            mime='text/csv',
+                            key='csv_consolidada_fem'
+                        )
+                    with col2_export_fem:
+                        st.download_button(
+                            label="📥 Exportar para Excel",
+                            data=to_excel(tabela_feminicidio),
+                            file_name=f'feminicidios_por_{agrupamento_selecionado}.xlsx',
+                            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                            key='excel_consolidada_fem'
+                        )
+                    with col3_export_fem:
+                        st.download_button(
+                            label="📄 Gerar PDF da Tabela",
+                            data=generate_pdf(tabela_feminicidio, f"Feminicidios por {agrupamento_selecionado}"),
+                            file_name=f'feminicidios_por_{agrupamento_selecionado}.pdf',
+                            mime='application/pdf',
+                            key='pdf_consolidada_fem'
+                        )
+                        
+                    # --- EXIBIÇÃO DA TABELA ---
                     colunas_evolucao = [col for col in tabela_feminicidio.columns if 'Diferença' in str(col)]
                     format_dict = {col: formatar_seta_percentual for col in colunas_evolucao}
                     anos_int = [col for col in tabela_feminicidio.columns if isinstance(col, int)]
@@ -2063,7 +2179,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     if 'Tendência (CAGR %)' in tabela_feminicidio.columns: colunas_para_colorir.append('Tendência (CAGR %)')
                     styler = tabela_feminicidio.style.applymap(colorir_percentual, subset=colunas_para_colorir).format(format_dict)
                     st.dataframe(styler, use_container_width=True)
-                    adicionar_downloads_tabela(tabela_feminicidio, f"tabela_consolidada_feminicidios_{agrupamento_selecionado.lower()}")
                 else: st.warning("Não há dados para exibir na tabela de feminicídios com os filtros selecionados.")
             else: st.warning("Não há dados para exibir na tabela de feminicídios com os filtros selecionados.")
         else:
@@ -2079,6 +2194,35 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             if not df_feminicidio_filtrado.empty:
                 tabela_total_fem = criar_tabela_total_feminicidio(df_feminicidio_filtrado)
                 if not tabela_total_fem.empty:
+                    # --- BOTÕES DE DOWNLOAD ---
+                    st.markdown("##### Exportar Dados da Tabela")
+                    col1_export_total_fem, col2_export_total_fem, col3_export_total_fem = st.columns(3)
+                    with col1_export_total_fem:
+                        st.download_button(
+                            label="📥 Exportar para CSV",
+                            data=to_csv(tabela_total_fem),
+                            file_name='feminicidios_consolidados_sc.csv',
+                            mime='text/csv',
+                            key='csv_total_fem'
+                        )
+                    with col2_export_total_fem:
+                        st.download_button(
+                            label="📥 Exportar para Excel",
+                            data=to_excel(tabela_total_fem),
+                            file_name='feminicidios_consolidados_sc.xlsx',
+                            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                            key='excel_total_fem'
+                        )
+                    with col3_export_total_fem:
+                        st.download_button(
+                            label="📄 Gerar PDF da Tabela",
+                            data=generate_pdf(tabela_total_fem, "Feminicidios Consolidados (SC)"),
+                            file_name='feminicidios_consolidados_sc.pdf',
+                            mime='application/pdf',
+                            key='pdf_total_fem'
+                        )
+
+                    # --- EXIBIÇÃO DA TABELA ---
                     colunas_evolucao = [col for col in tabela_total_fem.columns if 'Diferença' in str(col)]
                     format_dict = {col: formatar_seta_percentual for col in colunas_evolucao}
                     anos_int = [col for col in tabela_total_fem.columns if isinstance(col, int)]
@@ -2089,7 +2233,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     if 'Tendência (CAGR %)' in tabela_total_fem.columns: colunas_para_colorir.append('Tendência (CAGR %)')
                     styler = tabela_total_fem.style.applymap(colorir_percentual, subset=colunas_para_colorir).format(format_dict)
                     st.dataframe(styler, use_container_width=True)
-                    adicionar_downloads_tabela(tabela_total_fem, "tabela_consolidada_feminicidios_total_sc")
                 else: st.warning("Não há dados para exibir na tabela de feminicídios com os filtros selecionados.")
             else: st.warning("Não há dados para exibir na tabela de feminicídios com os filtros selecionados.")
             
@@ -2138,14 +2281,12 @@ with tab_analises_avancadas:
                 fig_mapa_letalidade = px.choropleth_mapbox(map_df_letalidade, geojson=geojson_sc, locations='municipio_normalizado', featureidkey="properties.NM_MUN_NORMALIZADO", color='indice_letalidade', color_continuous_scale="OrRd", mapbox_style="carto-positron", zoom=6, center={"lat": -27.59, "lon": -50.52}, opacity=0.7, labels={'indice_letalidade': f'Índice de Letalidade (a cada 100 eventos)'})
                 fig_mapa_letalidade.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, coloraxis_colorbar=dict(orientation="h", yanchor="bottom", y=-0.1, xanchor="center", x=0.5))
                 st.plotly_chart(fig_mapa_letalidade, use_container_width=True, key="mapa_letalidade")
-                adicionar_download_grafico(fig_mapa_letalidade, "mapa_indice_letalidade")
                 st.markdown("---")
                 
                 st.subheader(f"Ranking do Índice de Letalidade por {agrupamento_selecionado}")
                 st.markdown("A tabela abaixo classifica as localidades com maior risco de letalidade. O índice alto, mesmo com poucas ocorrências, é um sinal de alerta.")
                 df_ranking = df_letalidade_calculado.rename(columns={'localidade': agrupamento_selecionado, 'total_eventos': 'Total de Eventos (Ocorrências + Feminicídios)', 'total_ocorrencias': 'Ocorrências de Violência', 'total_feminicidios': 'Feminicídios', 'indice_letalidade': 'Índice de Letalidade'}).set_index(agrupamento_selecionado)
                 st.dataframe(df_ranking.style.format({'Índice de Letalidade': '{:.2f}', 'Total de Eventos (Ocorrências + Feminicídios)': '{:.0f}', 'Ocorrências de Violência': '{:.0f}', 'Feminicídios': '{:.0f}'}).background_gradient(cmap='OrRd', subset=['Índice de Letalidade']), use_container_width=True)
-                adicionar_downloads_tabela(df_ranking.reset_index(), "tabela_ranking_letalidade")
 
     with st.expander("🎯 Análise de Vulnerabilidade", expanded=False):
         st.header("Análise de Vulnerabilidade por Faixa Etária e Tipo de Crime")
@@ -2178,7 +2319,6 @@ with tab_analises_avancadas:
             fig_barras_vulnerabilidade = px.bar(df_plot, x='faixa_etaria', y='percentual', color='fato_comunicado', title="Distribuição Percentual de Tipos de Crime por Faixa Etária", labels={'faixa_etaria': 'Faixa Etária da Vítima', 'percentual': 'Percentual de Ocorrências (%)', 'fato_comunicado': 'Tipo de Crime'}, template='plotly_white', color_discrete_sequence=px.colors.sequential.Purples_r)
             fig_barras_vulnerabilidade.update_layout(barmode='stack', yaxis_ticksuffix='%')
             st.plotly_chart(fig_barras_vulnerabilidade, use_container_width=True, key="barras_vulnerabilidade")
-            adicionar_download_grafico(fig_barras_vulnerabilidade, "grafico_distribuicao_crime_faixa_etaria")
         else:
             st.warning("Não há dados suficientes para gerar o gráfico de vulnerabilidade com os filtros selecionados.")
 
@@ -2192,7 +2332,6 @@ with tab_analises_avancadas:
             fig_heatmap = go.Figure(data=go.Heatmap(z=crime_counts_heatmap.values, x=crime_counts_heatmap.columns, y=crime_counts_heatmap.index, colorscale='Purples', hoverongaps=False))
             fig_heatmap.update_layout(title="Concentração de Crimes (Absoluto) por Faixa Etária e Tipo", xaxis_title="Tipo de Crime", yaxis_title="Faixa Etária da Vítima")
             st.plotly_chart(fig_heatmap, use_container_width=True, key="heatmap_vulnerabilidade")
-            adicionar_download_grafico(fig_heatmap, "heatmap_concentracao_crime_faixa_etaria")
         else:
             st.warning("Não há dados suficientes para gerar o heatmap com os filtros selecionados.")
 
@@ -2223,7 +2362,6 @@ with tab_analises_avancadas:
             fig_efetividade = px.scatter(df_efetividade, x='taxa_crimes_leves', y='taxa_crimes_graves', hover_name='municipio', hover_data={'total_crimes_leves': ':.0f', 'total_crimes_graves': ':.0f', 'populacao_feminina': ':.0f', 'municipio': False}, trendline="ols", labels={'taxa_crimes_leves': 'Taxa de Crimes Leves (por 1.000 mulheres)', 'taxa_crimes_graves': 'Taxa de Crimes Graves (por 1.000 mulheres)'}, title="Efetividade da Denúncia: Crimes Leves vs. Graves por Município")
             fig_efetividade.update_traces(marker=dict(size=10, opacity=0.7, color='#8e24aa'))
             st.plotly_chart(fig_efetividade, use_container_width=True, key="scatter_efetividade")
-            adicionar_download_grafico(fig_efetividade, "grafico_efetividade_denuncia")
             
             with st.expander("Como interpretar este gráfico?"):
                 st.markdown("""
@@ -2279,7 +2417,6 @@ with tab_analises_avancadas:
             fig_contagio.add_annotation(x=max_x, y=0, text="Ilhas de Violência", showarrow=False, xanchor='right', yanchor='bottom', font=dict(color="purple"))
             fig_contagio.update_traces(marker=dict(size=10, opacity=0.7, color='#8e24aa'))
             st.plotly_chart(fig_contagio, use_container_width=True, key="scatter_contagio")
-            adicionar_download_grafico(fig_contagio, "grafico_analise_contagio_geografico")
 
             with st.expander("Como interpretar os quadrantes deste gráfico?"):
                 st.markdown("""
@@ -2328,7 +2465,6 @@ with tab_analises_avancadas:
             fig_barras_sazonal = px.bar(df_medias, x='Tipo de Dia', y='Média Diária de Ocorrências', text='Média Diária de Ocorrências', title="Média de Ocorrências por Tipo de Dia", labels={'Média Diária de Ocorrências': 'Média de Ocorrências por Dia', 'Tipo de Dia': ''}, template='plotly_white')
             fig_barras_sazonal.update_traces(marker_color='#8e24aa', texttemplate='%{text:.2f}', textposition='outside')
             st.plotly_chart(fig_barras_sazonal, use_container_width=True, key="barras_sazonal")
-            adicionar_download_grafico(fig_barras_sazonal, "grafico_impacto_feriados_fds")
             st.markdown("---")
             st.subheader("Heatmap de Risco: Dia da Semana vs. Mês")
             st.markdown("A cor de cada célula representa a quantidade média de crimes, destacando os períodos mais 'quentes' do ano.")
@@ -2346,7 +2482,6 @@ with tab_analises_avancadas:
             fig_heatmap_sazonal = go.Figure(data=go.Heatmap(z=heatmap_pivot.values, x=heatmap_pivot.columns, y=heatmap_pivot.index, colorscale='Purples', hoverongaps=False, text=heatmap_pivot.values, texttemplate="%{text:.2f}"))
             fig_heatmap_sazonal.update_layout(title="Concentração Média de Ocorrências por Mês e Dia da Semana", xaxis_title="Dia da Semana", yaxis_title="Mês", xaxis={'type': 'category'}, yaxis={'type': 'category', 'categoryorder': 'array', 'categoryarray': list(nomes_meses_pt.values())})
             st.plotly_chart(fig_heatmap_sazonal, use_container_width=True, key="heatmap_sazonal")
-            adicionar_download_grafico(fig_heatmap_sazonal, "heatmap_risco_sazonal_mes_dia")
             st.markdown("---")
             st.info("""**Por que é Avançado:** Transforma a análise temporal de descritiva ("o que aconteceu") para preditiva ("o que provavelmente vai acontecer"). Isso permite um planejamento proativo, como o reforço de patrulhas e a intensificação de campanhas "Ligue 180" durante o Carnaval ou as festas de fim de ano, por exemplo.""")
         else:
