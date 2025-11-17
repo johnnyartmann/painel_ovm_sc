@@ -44,24 +44,25 @@ def generate_pdf(df, title):
     
     # Título
     pdf.set_font('Arial', 'B', 16)
-    pdf.cell(0, 10, title, 0, 1, 'C')
+    # Use encode('latin-1', 'replace') to handle potential unsupported characters in the title
+    pdf.cell(0, 10, title.encode('latin-1', 'replace').decode('latin-1'), 0, 1, 'C')
     pdf.ln(10)
     
     # Tabela
     pdf.set_font('Arial', 'B', 8)
     
-    # Prepara os dados do DataFrame
-    cols = df.columns.tolist()
-    data = df.values.tolist()
+    # Prepara os dados do DataFrame, ensuring all data is string
+    cols = [str(col) for col in df.columns]
+    data = [[str(item) for item in row] for row in df.values.tolist()]
     
     # Calcula a largura das colunas
     col_widths = []
     for col in cols:
-        col_widths.append(pdf.get_string_width(str(col)) + 6)
+        col_widths.append(pdf.get_string_width(col) + 6)
         
     for row in data:
         for i, item in enumerate(row):
-            width = pdf.get_string_width(str(item)) + 6
+            width = pdf.get_string_width(item) + 6
             if width > col_widths[i]:
                 col_widths[i] = width
 
@@ -77,18 +78,39 @@ def generate_pdf(df, title):
     pdf.set_fill_color(74, 20, 140) # Roxo
     pdf.set_text_color(255, 255, 255)
     for i, col in enumerate(cols):
-        pdf.cell(col_widths[i], 10, str(col), 1, 0, 'C', 1)
+        # Handle potential special characters in column headers
+        col_encoded = col.encode('latin-1', 'replace').decode('latin-1')
+        pdf.cell(col_widths[i], 10, col_encoded, 1, 0, 'C', 1)
     pdf.ln()
 
     # Corpo da Tabela
     pdf.set_font('Arial', '', 8)
     pdf.set_text_color(0, 0, 0)
     for row in data:
+        # Check if the next row fits on the page, otherwise add a new page
+        if pdf.get_y() > 190: # 210mm (A4 height) - 20mm margin
+            pdf.add_page()
+            # Re-draw header on new page
+            pdf.set_font('Arial', 'B', 8)
+            pdf.set_fill_color(74, 20, 140)
+            pdf.set_text_color(255, 255, 255)
+            for i, col in enumerate(cols):
+                col_encoded = col.encode('latin-1', 'replace').decode('latin-1')
+                pdf.cell(col_widths[i], 10, col_encoded, 1, 0, 'C', 1)
+            pdf.ln()
+            pdf.set_font('Arial', '', 8)
+            pdf.set_text_color(0, 0, 0)
+
         for i, item in enumerate(row):
-            pdf.cell(col_widths[i], 10, str(item), 1, 0, 'C')
+            # Handle potential special characters in cell data
+            item_encoded = item.encode('latin-1', 'replace').decode('latin-1')
+            pdf.cell(col_widths[i], 10, item_encoded, 1, 0, 'C')
         pdf.ln()
         
-    return pdf.output()
+    # --- CORREÇÃO APLICADA AQUI ---
+    # 1. Use dest='S' to explicitly ask for a string output.
+    # 2. Encode this string into bytes using 'latin-1' for Streamlit.
+    return pdf.output(dest='S').encode('latin-1')
 
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
@@ -2638,4 +2660,3 @@ with tab_download:
             with open("data/municipios_sc.json", "rb") as fp:
                 st.download_button(label="Download (JSON)", data=fp, file_name="municipios_sc.json", mime="application/json", key="download_geojson")
         except FileNotFoundError: st.warning("Arquivo 'municipios_sc.json' não encontrado.")
-
