@@ -1840,6 +1840,13 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     height=500
                     )
 
+                    fig_sankey.add_annotation(
+                        text="Fluxo da esquerda para direita mostra a progressão do histórico criminal",
+                        xref="paper", yref="paper",
+                        x=0.5, y=-0.1,
+                        showarrow=False,
+                        font=dict(size=11, color="#666")
+                    )
                     st.plotly_chart(fig_sankey, use_container_width=True, key="sankey_fem")
                 else:
                     st.info("Não há dados para exibir o gráfico de histórico do agressor.")
@@ -2743,92 +2750,13 @@ with tab_analises_avancadas:
             st.warning("Certifique-se de que os arquivos `base_geral.xlsx` e `base_feminicidio.xlsx` existem na pasta `data`.")
 
 with tab_glossario:
-    st.header("Metodologia e Glossário")
-    
-    st.subheader("Metodologia")
-    st.markdown("""
-    Os dados que constam neste painel foram fornecidos pela **Gerência de Estatística e Análise Criminal da Secretaria de Estado da Segurança Pública** (GEAC | DINE | SSP | SC).
-    
-    Eles foram organizados e processados para possibilitar clareza no entendimento das informações e permitir a interação dos usuários.
-    
-    A elaboração do painel é uma parceria entre o **Observatório da Violência Contra a Mulher (OVM/SC)** e o **Ministério Público de Contas de Santa Catarina (MPC/SC)**.
-    """)
-
-    st.subheader("Análise de Tendências: Entendendo o CAGR")
-    st.markdown("""
-    Além de comparar um ano com o anterior, este painel utiliza a **Taxa de Crescimento Anual Composta (CAGR)** para analisar tendências de longo prazo.
-
-    **O que é?** O CAGR é uma medida que suaviza a volatilidade dos números anuais e nos informa qual teria sido a taxa de crescimento constante e média ao longo de todo um período.
-
-    **Por que é importante?** Enquanto a variação ano a ano pode mostrar picos e quedas bruscas, o CAGR revela a verdadeira trajetória do problema. Uma pequena queda em um único ano pode mascarar um crescimento consistente da violência ao longo de cinco anos. O CAGR ajuda a identificar problemas crônicos e a avaliar o impacto real e duradouro das políticas públicas, para além das flutuações de curto prazo.
-
-    **Como interpretar:** Um CAGR positivo (ex: +5%) indica uma tendência de crescimento no número de ocorrências, enquanto um CAGR negativo (ex: -3%) aponta para uma tendência de redução no longo prazo.
-    """)
-    
-    st.markdown("---")
-    
-    st.subheader("Glossário de Tipos de Crimes")
-    
-    with st.expander("🔹 Ameaça", expanded=False):
-        st.markdown("""
-        Ameaçar alguém, por palavra, escrito ou gesto, ou qualquer outro meio simbólico, de causar-lhe mal injusto e grave.
-        
-        **Base Legal:** Art. 147 do Código Penal Brasileiro
-        """)
-    
-    with st.expander("🔹 Lesão Corporal Dolosa", expanded=False):
-        st.markdown("""
-        A lesão corporal caracteriza-se por ofender a integridade corporal ou a saúde de outrem. O crime doloso ocorre quando o agente quis o resultado ou assumiu o risco de produzi-lo.
-        
-        **Base Legal:** Art. 129 do Código Penal Brasileiro
-        """)
-    
-    with st.expander("🔹 Estupro", expanded=False):
-        st.markdown("""
-        Constranger alguém, mediante violência ou grave ameaça, a ter conjunção carnal ou a praticar ou permitir que com ele se pratique outro ato libidinoso.
-        
-        **Base Legal:** Art. 213 do Código Penal Brasileiro
-        """)
-    
-    with st.expander("🔹 Feminicídio", expanded=False):
-        st.markdown("""
-        Homicídio contra a mulher por razões da condição de sexo feminino. 
-        
-        Considera-se que há razões de condição de sexo feminino quando o crime envolve:
-        - Violência doméstica e familiar
-        - Menosprezo ou discriminação à condição de mulher
-        
-        **Base Legal:** Art. 121, §2º-A do Código Penal (Lei nº 13.104/2015)
-        """)
-    
-    with st.expander("🔹 Vias de Fato", expanded=False):
-        st.markdown("""
-        São atos agressivos praticados contra alguém, que não cheguem a causar lesão corporal. 
-        
-        **Exemplos:** empurrar, sacudir, puxar cabelo, etc.
-        
-        **Base Legal:** Art. 21 da Lei de Contravenções Penais
-        """)
-    
-    st.markdown("---")
-    
-    st.info("**Fontes:** Código Penal Brasileiro, Lei do Feminicídio (Lei nº 13.104/2015), Lei Maria da Penha (Lei nº 11.340/2006).")
-    
-    st.markdown("---")
-    
-    st.markdown("""
-    <div style='text-align: center; padding: 2rem; background: linear-gradient(135deg, #f8f4fb 0%, #ffffff 100%); border-radius: 10px; margin-top: 2rem;'>
-        <h4 style='color: #6a1b9a; margin-bottom: 1rem;'>💜 Em caso de violência, denuncie!</h4>
-        <p style='font-size: 1.2rem; font-weight: 600; color: #4a148c;'>Ligue 180 - Central de Atendimento à Mulher</p>
-        <p style='color: #666; margin-top: 0.5rem;'>Disque 190 - Polícia Militar | 197 - Polícia Civil</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-st.markdown("""
-<div class='footer'>
-    Observatório da Violência Contra a Mulher - SC | 2025
-</div>
-""", unsafe_allow_html=True)
+    try:
+        with open("metodologia_glossario.txt", "r", encoding="utf-8") as f:
+            texto_metodologia = f.read()
+        st.markdown(texto_metodologia, unsafe_allow_html=True)
+    except FileNotFoundError:
+        st.error("Arquivo 'metodologia_glossario.txt' não encontrado.")
+        st.info("Por favor, certifique-se de que o arquivo com a metodologia e o glossário está na mesma pasta que o script principal.")
 
 with tab_download:
     st.header("Download das Fontes de Dados")
@@ -2870,4 +2798,3 @@ with tab_download:
                 file_name="municipios_sc.json",
                 mime="application/json"
             )
-
