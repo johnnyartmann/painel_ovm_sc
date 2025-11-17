@@ -88,7 +88,7 @@ def generate_pdf(df, title):
             pdf.cell(col_widths[i], 10, str(item), 1, 0, 'C')
         pdf.ln()
         
-    return pdf.output(dest='S').encode('latin-1')
+    return pdf.output()
 
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
@@ -2638,3 +2638,4 @@ with tab_download:
             with open("data/municipios_sc.json", "rb") as fp:
                 st.download_button(label="Download (JSON)", data=fp, file_name="municipios_sc.json", mime="application/json", key="download_geojson")
         except FileNotFoundError: st.warning("Arquivo 'municipios_sc.json' não encontrado.")
+
