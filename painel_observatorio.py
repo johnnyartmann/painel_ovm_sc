@@ -1168,7 +1168,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
         
         if todos_municipios:
             municipio_selecionado = municipios_disponiveis
-            st.info(f"✓ {len(municipios_disponiveis)} municípios selecionados")
+            st.info(f"✓ 295 municípios selecionados")
         else:
             municipio_selecionado = st.multiselect(
                 "Município(s) específico(s)", 
