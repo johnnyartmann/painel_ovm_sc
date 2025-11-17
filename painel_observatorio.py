@@ -1258,13 +1258,78 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
         st.markdown("---")
         
         st.subheader(f"Distribuição de Crimes por {agrupamento_selecionado}")
-        
-        view_type = st.radio(
-            "Selecione a visualização do mapa:",
-            ("Soma dos Crimes", "Crimes por Mil Mulheres", "% de Mulheres Vítimas"),
-            horizontal=True,
-            key="map_view_type"
-        )
+
+        if 'map_view_type' not in st.session_state:
+            st.session_state.map_view_type = 'Soma dos Crimes'
+
+        def set_map_view(view_type):
+            st.session_state.map_view_type = view_type
+
+        st.markdown("""
+        <style>
+            /* Estilo para o botão INATIVO (muted) */
+            div[data-testid="stButton"] > button[kind="secondary"] {
+                background-color: #ab47bc; /* Um roxo mais claro e menos saturado */
+                color: rgba(255, 255, 255, 0.6); /* Texto branco com transparência */
+                border: none; /* Remove a borda padrão */
+                box-shadow: none; /* Remove a sombra padrão */
+                font-weight: 600;
+                transition: all 0.2s ease-in-out;
+            }
+
+            /* Efeito ao passar o mouse no botão INATIVO */
+            div[data-testid="stButton"] > button[kind="secondary"]:hover {
+                background-color: #9c27b0; /* Escurece um pouco no hover */
+            color: rgba(255, 255, 255, 0.9);
+            }
+
+            /* Estilo para o botão ATIVO (vibrante) */
+            div[data-testid="stButton"] > button[kind="primary"] {
+                background: linear-gradient(135deg, #8e24aa 0%, #ab47bc 100%);
+                color: white;
+                border: none;
+                box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15); /* Sombra para dar destaque */
+                font-weight: 600;
+            }
+    
+            /* Efeito de foco para acessibilidade em ambos os botões */
+            div[data-testid="stButton"] > button:focus {
+                box-shadow: 0 0 0 3px rgba(142, 36, 170, 0.5) !important;
+                outline: none !important;
+            }
+        </style>
+        """, unsafe_allow_html=True)
+
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            st.button(
+                label="Soma dos Crimes",
+                on_click=set_map_view,
+                args=('Soma dos Crimes',),
+                use_container_width=True,
+                type="primary" if st.session_state.map_view_type == 'Soma dos Crimes' else "secondary"
+            )
+
+        with col2:
+            st.button(
+                label="Crimes por Mil Mulheres",
+                on_click=set_map_view,
+                args=('Crimes por Mil Mulheres',),
+                use_container_width=True,
+                type="primary" if st.session_state.map_view_type == 'Crimes por Mil Mulheres' else "secondary"
+            )
+
+        with col3:
+            st.button(
+                label="% de Mulheres Vítimas", # Usando o texto completo para clareza
+                on_click=set_map_view,
+                args=('% de Mulheres Vítimas',),
+                use_container_width=True,
+                type="primary" if st.session_state.map_view_type == '% de Mulheres Vítimas' else "secondary"
+            )
+
+        view_type = st.session_state.map_view_type
 
         map_df = pd.DataFrame()
         color_col = 'value'
@@ -2773,41 +2838,103 @@ with tab_glossario:
 
 with tab_download:
     st.header("Download das Fontes de Dados")
-    st.markdown("Faça o download dos arquivos de dados utilizados neste painel.")
-
+    st.markdown("Faça o download dos arquivos de dados brutos utilizados para a construção deste painel.")
     st.markdown("---")
 
+    # --- Primeira Linha de Downloads ---
     col1, col2, col3 = st.columns(3)
 
     with col1:
         st.subheader("Base Geral de Crimes")
-        st.markdown("Contém todos os registros de violência contra a mulher, exceto feminicídios.")
-        with open("data/base_geral.xlsx", "rb") as fp:
-            st.download_button(
-                label="Download (XLSX)",
-                data=fp,
-                file_name="base_geral.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+        st.markdown("Registros de violência contra a mulher (exceto feminicídios).")
+        try:
+            with open("data/base_geral.xlsx", "rb") as fp:
+                st.download_button(
+                    label="Download (XLSX)",
+                    data=fp,
+                    file_name="base_geral.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="download_geral"
+                )
+        except FileNotFoundError:
+            st.warning("Arquivo 'base_geral.xlsx' não encontrado.")
 
     with col2:
         st.subheader("Base de Feminicídios")
-        st.markdown("Contém os registros de feminicídios consumados.")
-        with open("data/base_feminicidio.xlsx", "rb") as fp:
-            st.download_button(
-                label="Download (XLSX)",
-                data=fp,
-                file_name="base_feminicidio.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+        st.markdown("Registros detalhados de feminicídios consumados.")
+        try:
+            with open("data/base_feminicidio.xlsx", "rb") as fp:
+                st.download_button(
+                    label="Download (XLSX)",
+                    data=fp,
+                    file_name="base_feminicidio.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="download_feminicidio"
+                )
+        except FileNotFoundError:
+            st.warning("Arquivo 'base_feminicidio.xlsx' não encontrado.")
 
     with col3:
-        st.subheader("Mapa de Municípios (GeoJSON)")
-        st.markdown("Arquivo com as geometrias dos municípios de Santa Catarina.")
-        with open("data/municipios_sc.json", "rb") as fp:
-            st.download_button(
-                label="Download (JSON)",
-                data=fp,
-                file_name="municipios_sc.json",
-                mime="application/json"
-            )
+        st.subheader("Base Populacional")
+        st.markdown("Dados da população feminina por município.")
+        try:
+            with open("data/base_populacao.xlsx", "rb") as fp:
+                st.download_button(
+                    label="Download (XLSX)",
+                    data=fp,
+                    file_name="base_populacao.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="download_populacao"
+                )
+        except FileNotFoundError:
+            st.warning("Arquivo 'base_populacao.xlsx' não encontrado.")
+
+    st.markdown("---")
+
+    # --- Segunda Linha de Downloads ---
+    col4, col5, col6 = st.columns(3)
+
+    with col4:
+        st.subheader("Base de Regiões")
+        st.markdown("Mapeamento de municípios para mesorregiões e associações.")
+        try:
+            with open("data/base_regioes_associacoes.xlsx", "rb") as fp:
+                st.download_button(
+                    label="Download (XLSX)",
+                    data=fp,
+                    file_name="base_regioes_associacoes.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="download_regioes"
+                )
+        except FileNotFoundError:
+            st.warning("Arquivo 'base_regioes_associacoes.xlsx' não encontrado.")
+
+    with col5:
+        st.subheader("Base de Calendário")
+        st.markdown("Mapeamento de feriados para análise sazonal.")
+        try:
+            with open("data/base_calendario_feriados.xlsx", "rb") as fp:
+                st.download_button(
+                    label="Download (XLSX)",
+                    data=fp,
+                    file_name="base_calendario_feriados.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="download_calendario"
+                )
+        except FileNotFoundError:
+            st.warning("Arquivo 'base_calendario_feriados.xlsx' não encontrado.")
+
+    with col6:
+        st.subheader("Mapa de Municípios")
+        st.markdown("Arquivo GeoJSON com as geometrias dos municípios de SC.")
+        try:
+            with open("data/municipios_sc.json", "rb") as fp:
+                st.download_button(
+                    label="Download (JSON)",
+                    data=fp,
+                    file_name="municipios_sc.json",
+                    mime="application/json",
+                    key="download_geojson"
+                )
+        except FileNotFoundError:
+            st.warning("Arquivo 'municipios_sc.json' não encontrado.")
