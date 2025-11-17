@@ -8,7 +8,7 @@ import numpy as np
 import re
 from shapely.geometry import shape, Point
 import io
-from fpdf import FPDF
+# from fpdf import FPDF # Removido
 
 # --- FUNÇÕES DE EXPORTAÇÃO ---
 
@@ -26,96 +26,12 @@ def to_csv(df):
     """Converte um DataFrame para um arquivo CSV em memória."""
     return df.to_csv(index=False).encode('utf-8')
 
-class PDF(FPDF):
-    def header(self):
-        self.set_font('Arial', 'B', 12)
-        self.cell(0, 10, 'Relatorio Gerado pelo Observatorio da Violencia', 0, 1, 'C')
-        self.ln(5)
-
-    def footer(self):
-        self.set_y(-15)
-        self.set_font('Arial', 'I', 8)
-        self.cell(0, 10, f'Pagina {self.page_no()}', 0, 0, 'C')
-
-def generate_pdf(df, title):
-    """Gera um PDF a partir de um DataFrame."""
-    pdf = PDF(orientation='L', unit='mm', format='A4')
-    pdf.add_page()
-    
-    # Título
-    pdf.set_font('Arial', 'B', 16)
-    # Safely encode the title to handle special characters
-    pdf.cell(0, 10, title.encode('latin-1', 'replace').decode('latin-1'), 0, 1, 'C')
-    pdf.ln(10)
-    
-    # Tabela
-    pdf.set_font('Arial', 'B', 8)
-    
-    # Prepare DataFrame data, ensuring everything is a string
-    cols = [str(col) for col in df.columns]
-    data = [[str(item) for item in row] for row in df.values.tolist()]
-    
-    # Calculate column widths
-    col_widths = []
-    for col in cols:
-        col_widths.append(pdf.get_string_width(col) + 6)
-        
-    for row in data:
-        for i, item in enumerate(row):
-            width = pdf.get_string_width(item) + 6
-            if width > col_widths[i]:
-                col_widths[i] = width
-
-    page_width = 277 # A4 landscape width minus margins
-    total_width = sum(col_widths)
-    
-    # If the table is too wide, adjust columns proportionally
-    if total_width > page_width:
-        ratio = page_width / total_width
-        col_widths = [w * ratio for w in col_widths]
-
-    # Table Header
-    pdf.set_fill_color(74, 20, 140) # Purple
-    pdf.set_text_color(255, 255, 255)
-    for i, col in enumerate(cols):
-        col_encoded = col.encode('latin-1', 'replace').decode('latin-1')
-        pdf.cell(col_widths[i], 10, col_encoded, 1, 0, 'C', 1)
-    pdf.ln()
-
-    # Table Body
-    pdf.set_font('Arial', '', 8)
-    pdf.set_text_color(0, 0, 0)
-    for row in data:
-        # Auto page break logic
-        if pdf.get_y() > 190: # y position threshold before adding a new page
-            pdf.add_page()
-            # Redraw header on the new page
-            pdf.set_font('Arial', 'B', 8)
-            pdf.set_fill_color(74, 20, 140)
-            pdf.set_text_color(255, 255, 255)
-            for i, col in enumerate(cols):
-                col_encoded = col.encode('latin-1', 'replace').decode('latin-1')
-                pdf.cell(col_widths[i], 10, col_encoded, 1, 0, 'C', 1)
-            pdf.ln()
-            pdf.set_font('Arial', '', 8)
-            pdf.set_text_color(0, 0, 0)
-            
-        for i, item in enumerate(row):
-            item_encoded = item.encode('latin-1', 'replace').decode('latin-1')
-            pdf.cell(col_widths[i], 10, item_encoded, 1, 0, 'C')
-        pdf.ln()
-        
-    # --- FINAL ROBUST SOLUTION ---
-    # The fpdf library's output type can be inconsistent (str or bytes).
-    # This code checks the type and handles both cases to ensure it always works.
-    pdf_output = pdf.output(dest='S')
-
-    if isinstance(pdf_output, str):
-        # If the output is a string, we MUST encode it to bytes for Streamlit.
-        return pdf_output.encode('latin-1')
-    else:
-        # If the output is already bytes, we return it directly.
-        return pdf_output
+# A classe PDF e a função generate_pdf foram removidas.
+# class PDF(FPDF):
+#     ...
+#
+# def generate_pdf(df, title):
+#     ...
 
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
@@ -1685,7 +1601,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                 if not tabela_consolidada.empty:
                     # --- BOTÕES DE DOWNLOAD ---
                     st.markdown("##### Exportar Dados da Tabela")
-                    col1_export, col2_export, col3_export = st.columns(3)
+                    col1_export, col2_export = st.columns(2) # Ajustado de 3 para 2
                     with col1_export:
                         st.download_button(
                             label="📥 Exportar para CSV",
@@ -1702,14 +1618,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                             mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                             key='excel_consolidada_geral'
                         )
-                    with col3_export:
-                        st.download_button(
-                            label="📄 Gerar PDF da Tabela",
-                            data=generate_pdf(tabela_consolidada, f"Ocorrencias por {agrupamento_selecionado}"),
-                            file_name=f'ocorrencias_por_{agrupamento_selecionado}.pdf',
-                            mime='application/pdf',
-                            key='pdf_consolidada_geral'
-                        )
+                    # O botão de PDF foi removido daqui
                     
                     # --- EXIBIÇÃO DA TABELA ---
                     colunas_evolucao = [col for col in tabela_consolidada.columns if 'Diferença' in str(col)]
@@ -1750,7 +1659,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                 if not tabela_total.empty:
                     # --- BOTÕES DE DOWNLOAD ---
                     st.markdown("##### Exportar Dados da Tabela")
-                    col1_export, col2_export, col3_export = st.columns(3)
+                    col1_export, col2_export = st.columns(2) # Ajustado de 3 para 2
                     with col1_export:
                         st.download_button(
                             label="📥 Exportar para CSV",
@@ -1767,14 +1676,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                             mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                             key='excel_total_geral'
                         )
-                    with col3_export:
-                        st.download_button(
-                            label="📄 Gerar PDF da Tabela",
-                            data=generate_pdf(tabela_total, "Ocorrencias Consolidadas (SC)"),
-                            file_name='ocorrencias_consolidadas_sc.pdf',
-                            mime='application/pdf',
-                            key='pdf_total_geral'
-                        )
+                    # O botão de PDF foi removido daqui
                         
                     # --- EXIBIÇÃO DA TABELA ---
                     colunas_evolucao = [col for col in tabela_total.columns if 'Diferença' in str(col)]
@@ -1821,7 +1723,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
         if not tabela_populacional.empty:
             df_para_exportar_pop = tabela_populacional.reset_index()
             st.markdown("##### Exportar Dados da Tabela")
-            col1_export_pop, col2_export_pop, col3_export_pop = st.columns(3)
+            col1_export_pop, col2_export_pop = st.columns(2) # Ajustado de 3 para 2
             with col1_export_pop:
                 st.download_button(
                     label="📥 Exportar para CSV",
@@ -1838,14 +1740,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                     key='excel_populacional'
                 )
-            with col3_export_pop:
-                st.download_button(
-                    label="📄 Gerar PDF da Tabela",
-                    data=generate_pdf(df_para_exportar_pop, f"Taxa Populacional por {agrupamento_selecionado}"),
-                    file_name=f'taxa_populacional_{agrupamento_selecionado}.pdf',
-                    mime='application/pdf',
-                    key='pdf_populacional'
-                )
+            # O botão de PDF foi removido daqui
                 
         # --- EXIBIÇÃO DA TABELA ---
         st.dataframe(tabela_populacional.style.format({'Média Anual de Fatos Ocorridos': '{:.2f}', 'Fatos por Mil Mulheres (anual)': '{:.2f}', '% de Mulheres Vítimas (anual)': '{:.2f}%', 'População Feminina': '{:,.0f}', 'Tendência (CAGR %)': '{:+.1f}%'}), use_container_width=True)
@@ -2233,7 +2128,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                 if not tabela_feminicidio.empty:
                     # --- BOTÕES DE DOWNLOAD ---
                     st.markdown("##### Exportar Dados da Tabela")
-                    col1_export_fem, col2_export_fem, col3_export_fem = st.columns(3)
+                    col1_export_fem, col2_export_fem = st.columns(2) # Ajustado de 3 para 2
                     with col1_export_fem:
                         st.download_button(
                             label="📥 Exportar para CSV",
@@ -2250,14 +2145,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                             mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                             key='excel_consolidada_fem'
                         )
-                    with col3_export_fem:
-                        st.download_button(
-                            label="📄 Gerar PDF da Tabela",
-                            data=generate_pdf(tabela_feminicidio, f"Feminicidios por {agrupamento_selecionado}"),
-                            file_name=f'feminicidios_por_{agrupamento_selecionado}.pdf',
-                            mime='application/pdf',
-                            key='pdf_consolidada_fem'
-                        )
+                    # O botão de PDF foi removido daqui
                         
                     # --- EXIBIÇÃO DA TABELA ---
                     colunas_evolucao = [col for col in tabela_feminicidio.columns if 'Diferença' in str(col)]
@@ -2298,7 +2186,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                 if not tabela_total_fem.empty:
                     # --- BOTÕES DE DOWNLOAD ---
                     st.markdown("##### Exportar Dados da Tabela")
-                    col1_export_total_fem, col2_export_total_fem, col3_export_total_fem = st.columns(3)
+                    col1_export_total_fem, col2_export_total_fem = st.columns(2) # Ajustado de 3 para 2
                     with col1_export_total_fem:
                         st.download_button(
                             label="📥 Exportar para CSV",
@@ -2315,14 +2203,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                             mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                             key='excel_total_fem'
                         )
-                    with col3_export_total_fem:
-                        st.download_button(
-                            label="📄 Gerar PDF da Tabela",
-                            data=generate_pdf(tabela_total_fem, "Feminicidios Consolidados (SC)"),
-                            file_name='feminicidios_consolidados_sc.pdf',
-                            mime='application/pdf',
-                            key='pdf_total_fem'
-                        )
+                    # O botão de PDF foi removido daqui
 
                     # --- EXIBIÇÃO DA TABELA ---
                     colunas_evolucao = [col for col in tabela_total_fem.columns if 'Diferença' in str(col)]
