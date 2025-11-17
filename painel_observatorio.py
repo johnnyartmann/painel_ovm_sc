@@ -1840,13 +1840,6 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     height=500
                     )
 
-                    fig_sankey.add_annotation(
-                        text="Fluxo da esquerda para direita mostra a progressão do histórico criminal",
-                        xref="paper", yref="paper",
-                        x=0.5, y=-0.1,
-                        showarrow=False,
-                        font=dict(size=11, color="#666")
-                    )
                     st.plotly_chart(fig_sankey, use_container_width=True, key="sankey_fem")
                 else:
                     st.info("Não há dados para exibir o gráfico de histórico do agressor.")
@@ -2877,3 +2870,4 @@ with tab_download:
                 file_name="municipios_sc.json",
                 mime="application/json"
             )
+
