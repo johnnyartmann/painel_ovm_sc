@@ -730,9 +730,16 @@ def criar_tabela_total_consolidada(df):
     
     anos = sorted([col for col in df_pivot.columns if isinstance(col, (int, float))])
 
+    ano_corrente = pd.Timestamp.now().year # Pega o ano corrente
+
     if len(anos) > 1:
         for i in range(1, len(anos)):
             ano_atual = anos[i]
+            
+            # Se o ano atual for o ano corrente, não calcula a variação e interrompe o laço
+            if ano_atual == ano_corrente:
+                break
+                
             ano_anterior = anos[i-1]
             coluna_evolucao = f'Diferença {ano_anterior}-{ano_atual}'
             
@@ -741,8 +748,8 @@ def criar_tabela_total_consolidada(df):
 
     anos_int = sorted([col for col in df_pivot.columns if isinstance(col, int)])
     
-    ano_corrente = pd.Timestamp.now().year
-    anos_para_cagr = [ano for ano in anos_int if ano != ano_corrente]
+    ano_corrente_cagr = pd.Timestamp.now().year
+    anos_para_cagr = [ano for ano in anos_int if ano != ano_corrente_cagr]
 
     if len(anos_para_cagr) >= 3:
         valor_inicial = df_pivot[anos_para_cagr[0]]
@@ -898,9 +905,15 @@ def criar_tabela_total_feminicidio(df):
     
     anos = sorted([col for col in df_pivot.columns if isinstance(col, (int, float))])
 
+    ano_corrente = pd.Timestamp.now().year
+
     if len(anos) > 1:
         for i in range(1, len(anos)):
             ano_atual = anos[i]
+
+            if ano_atual == ano_corrente:
+                break
+
             ano_anterior = anos[i-1]
             coluna_evolucao = f'Diferença {ano_anterior}-{ano_atual}'
             denominador = df_pivot[ano_anterior].replace(0, pd.NA)
@@ -908,8 +921,8 @@ def criar_tabela_total_feminicidio(df):
 
     anos_int = sorted([col for col in df_pivot.columns if isinstance(col, int)])
     
-    ano_corrente = pd.Timestamp.now().year
-    anos_para_cagr = [ano for ano in anos_int if ano != ano_corrente]
+    ano_corrente_cagr = pd.Timestamp.now().year
+    anos_para_cagr = [ano for ano in anos_int if ano != ano_corrente_cagr]
 
     if len(anos_para_cagr) >= 3:
         valor_inicial = df_pivot[anos_para_cagr[0]]
