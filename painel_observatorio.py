@@ -571,8 +571,9 @@ def carregar_dados_gerais():
             df_geral['municipio_normalizado'] = df_geral['municipio'].apply(normalizar_nome)
 
         df_geral = pd.merge(df_geral, df_regioes[['municipio_normalizado', 'mesoregiao', 'associacao']], on='municipio_normalizado', how='left')
-        df_geral['mesoregiao'].fillna('Não informado', inplace=True)
-        df_geral['associacao'].fillna('Não informado', inplace=True)
+        # --- ALTERAÇÃO AQUI ---
+        df_geral['mesoregiao'] = df_geral['mesoregiao'].fillna('Não informado')
+        df_geral['associacao'] = df_geral['associacao'].fillna('Não informado')
         
         df_feminicidio_raw = carregar_dados_feminicidio()
         if not df_feminicidio_raw.empty:
@@ -632,8 +633,9 @@ def carregar_dados_feminicidio():
             df['municipio_normalizado'] = df['municipio'].apply(normalizar_nome)
 
         df = pd.merge(df, df_regioes[['municipio_normalizado', 'mesoregiao', 'associacao']], on='municipio_normalizado', how='left')
-        df['mesoregiao'].fillna('Não informado', inplace=True)
-        df['associacao'].fillna('Não informado', inplace=True)
+        # --- ALTERAÇÃO AQUI ---
+        df['mesoregiao'] = df['mesoregiao'].fillna('Não informado')
+        df['associacao'] = df['associacao'].fillna('Não informado')
         
         df['ano'] = df['data_fato'].dt.year
         return df
@@ -745,7 +747,13 @@ def criar_tabela_consolidada(df, coluna_agrupamento, nome_agrupamento):
         ordem_colunas.append('Tendência (CAGR %)')
         
     ordem_final = [col for col in ordem_colunas if col in df_pivot.columns]
-    
+
+    # 1. Converte os nomes das colunas do DataFrame para texto
+    df_pivot.columns = df_pivot.columns.map(str)
+
+    # 2. Converte a lista de ordenação para texto também (para garantir a correspondência)
+    ordem_final = [str(col) for col in ordem_final]
+
     df_consolidado = df_pivot[ordem_final].reset_index()
     nome_coluna = f"Nome do {nome_agrupamento}" if nome_agrupamento == "Município" else nome_agrupamento
     df_consolidado.rename(columns={coluna_agrupamento: nome_coluna, 'fato_comunicado': 'Fato Comunicado'}, inplace=True)
@@ -810,7 +818,10 @@ def criar_tabela_total_consolidada(df):
         ordem_colunas.append('Tendência (CAGR %)')
 
     ordem_final = [col for col in ordem_colunas if col in df_pivot.columns]
-    
+
+    df_pivot.columns = df_pivot.columns.map(str)
+    ordem_final = [str(col) for col in ordem_final]
+
     df_consolidado = df_pivot[ordem_final].reset_index()
     df_consolidado.rename(columns={'fato_comunicado': 'Fato Comunicado'}, inplace=True)
     
@@ -928,6 +939,9 @@ def criar_tabela_feminicidio_agrupado(df, coluna_agrupamento, nome_agrupamento):
     
     ordem_final = [col for col in ordem_colunas if col in df_pivot.columns]
 
+    df_pivot.columns = df_pivot.columns.map(str)
+    ordem_final = [str(col) for col in ordem_final]
+
     df_consolidado = df_pivot[ordem_final].reset_index()
     nome_coluna = f"Nome do {nome_agrupamento}" if nome_agrupamento == "Município" else nome_agrupamento
     df_consolidado.rename(columns={coluna_agrupamento: nome_coluna}, inplace=True)
@@ -997,6 +1011,9 @@ def criar_tabela_total_feminicidio(df):
         ordem_colunas.append('Tendência (CAGR %)')
 
     ordem_final = [col for col in ordem_colunas if col in df_pivot.columns]
+
+    df_pivot.columns = df_pivot.columns.map(str)
+    ordem_final = [str(col) for col in ordem_final]
 
     df_consolidado = df_pivot[ordem_final].reset_index(drop=True)
     df_consolidado.insert(0, 'Tipo de Crime', 'Feminicídio')
@@ -1180,7 +1197,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
             on='municipio_normalizado',
             how='left'
         )
-        df_populacional_metrics['total_fatos'].fillna(0, inplace=True)
+        df_populacional_metrics['total_fatos'] = df_populacional_metrics['total_fatos'].fillna(0)
 
         anos_no_filtro = df_geral_filtrado_por_data['ano'].unique()
         num_anos = len(anos_no_filtro) if len(anos_no_filtro) > 0 else 1
@@ -1247,7 +1264,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
         (df_geral['associacao'].isin(associacao_selecionado)) &
         (df_geral['idade_vitima'] >= idade_selecionada[0]) & (df_geral['idade_vitima'] <= idade_max_filtro) &
         (df_geral['municipio_normalizado'].isin(municipios_filtrados_populacao))
-    ]
+    ].copy()
     
     df_feminicidio_filtrado = df_feminicidio[
         (df_feminicidio['data_fato'].dt.date >= data_inicial) &
@@ -1257,7 +1274,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
         (df_feminicidio['associacao'].isin(associacao_selecionado)) &
         (df_feminicidio['idade_vitima'] >= idade_selecionada[0]) & (df_feminicidio['idade_vitima'] <= idade_max_filtro) &
         (df_feminicidio['municipio_normalizado'].isin(municipios_filtrados_populacao))
-    ]
+    ].copy()
 
     # --- ABA: ANÁLISE GERAL (REORGANIZADA) ---
     with tab_geral:
@@ -1640,7 +1657,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     if 'Tendência (CAGR %)' in tabela_consolidada.columns:
                         colunas_para_colorir.append('Tendência (CAGR %)')
                     
-                    styler = tabela_consolidada.style.applymap(colorir_percentual, subset=colunas_para_colorir).format(format_dict)
+                    styler = tabela_consolidada.style.map(colorir_percentual, subset=colunas_para_colorir).format(format_dict)
                     st.dataframe(styler, use_container_width=True)
                 else: st.warning("Não há dados para exibir na tabela consolidada com os filtros selecionados.")
             else: st.warning("Não há dados para exibir na tabela consolidada com os filtros selecionados.")
@@ -1698,7 +1715,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     if 'Tendência (CAGR %)' in tabela_total.columns:
                         colunas_para_colorir.append('Tendência (CAGR %)')
                         
-                    styler = tabela_total.style.applymap(colorir_percentual, subset=colunas_para_colorir).format(format_dict)
+                    styler = tabela_total.style.map(colorir_percentual, subset=colunas_para_colorir).format(format_dict)
                     st.dataframe(styler, use_container_width=True)
                 else: st.warning("Não há dados para exibir na tabela consolidada com os filtros selecionados.")
             else: st.warning("Não há dados para exibir na tabela consolidada com os filtros selecionados.")
@@ -2167,7 +2184,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     if 'Tendência (CAGR %)' in tabela_feminicidio.columns:
                         colunas_para_colorir.append('Tendência (CAGR %)')
 
-                    styler = tabela_feminicidio.style.applymap(colorir_percentual, subset=colunas_para_colorir).format(format_dict)
+                    styler = tabela_feminicidio.style.map(colorir_percentual, subset=colunas_para_colorir).format(format_dict)
                     st.dataframe(styler, use_container_width=True)
                 else: st.warning("Não há dados para exibir na tabela de feminicídios com os filtros selecionados.")
             else: st.warning("Não há dados para exibir na tabela de feminicídios com os filtros selecionados.")
@@ -2225,7 +2242,7 @@ if not df_geral.empty and not df_feminicidio.empty and geojson_sc is not None an
                     if 'Tendência (CAGR %)' in tabela_total_fem.columns:
                         colunas_para_colorir.append('Tendência (CAGR %)')
                         
-                    styler = tabela_total_fem.style.applymap(colorir_percentual, subset=colunas_para_colorir).format(format_dict)
+                    styler = tabela_total_fem.style.map(colorir_percentual, subset=colunas_para_colorir).format(format_dict)
                     st.dataframe(styler, use_container_width=True)
                 else: st.warning("Não há dados para exibir na tabela de feminicídios com os filtros selecionados.")
             else: st.warning("Não há dados para exibir na tabela de feminicídios com os filtros selecionados.")
