@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
+from data_loader import mapear_vizinhos
 from plotting import (plot_barras_sazonal, plot_barras_vulnerabilidade, plot_contagio_geografico,
                     plot_efetividade_denuncia, plot_heatmap_sazonal, plot_heatmap_vulnerabilidade,
                     plot_mapa_letalidade)
@@ -225,8 +226,7 @@ def render():
         Esta análise trata a violência como um fenômeno que pode se "espalhar" ou se concentrar em microrregiões, requerendo soluções coordenadas entre múltiplos municípios.
         """)
 
-from data_loader import mapear_vizinhos
-if not st.session_state.df_geral_filtrado.empty and not st.session_state.df_populacao.empty:
+        if not st.session_state.df_geral_filtrado.empty and not st.session_state.df_populacao.empty:
             mapa_vizinhos = mapear_vizinhos(st.session_state.geojson_sc)
             crimes_por_municipio = st.session_state.df_geral_filtrado['municipio_normalizado'].value_counts().reset_index()
             crimes_por_municipio.columns = ['municipio_normalizado', 'total_fatos']
@@ -282,7 +282,7 @@ if not st.session_state.df_geral_filtrado.empty and not st.session_state.df_popu
             st.subheader("Impacto de Feriados e Fins de Semana na Média Diária de Ocorrências")
             with st.expander("Como interpretar este gráfico?"):
                 st.info(
-                    "Este gráfico compara a média de crimes em dias úteis comuns com dias especiais (feriados, vésperas, fins de semana). Barras mais altas em dias não úteis sugerem uma forte correlação entre o aumento de convivência e o aumento da violência.")
+                    "Este gráfico compara a média de crimes em dias útis comuns com dias especiais (feriados, vésperas, fins de semana). Barras mais altas em dias não úteis sugerem uma forte correlação entre o aumento de convivência e o aumento da violência.")
             df_geral_filtrado_sazonal['data_fato_date'] = df_geral_filtrado_sazonal['data_fato'].dt.date
             st.session_state.df_calendario['data_fato_date'] = st.session_state.df_calendario['data'].dt.date
             df_geral_filtrado_sazonal = pd.merge(df_geral_filtrado_sazonal,
