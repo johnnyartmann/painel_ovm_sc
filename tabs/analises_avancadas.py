@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 import streamlit as st
-from data_loader import mapear_vizinhos
 from plotting import (plot_barras_sazonal, plot_barras_vulnerabilidade, plot_contagio_geografico,
                     plot_efetividade_denuncia, plot_heatmap_sazonal, plot_heatmap_vulnerabilidade,
                     plot_mapa_letalidade)
@@ -231,7 +230,7 @@ def render():
         """)
         
         if not st.session_state.df_geral_filtrado.empty and not st.session_state.df_populacao.empty:
-            mapa_vizinhos = mapear_vizinhos(st.session_state.geojson_sc)
+            mapa_vizinhos = st.session_state.vizinhos
             crimes_por_municipio = st.session_state.df_geral_filtrado['municipio_normalizado'].value_counts().reset_index()
             crimes_por_municipio.columns = ['municipio_normalizado', 'total_fatos']
             df_taxas = pd.merge(crimes_por_municipio,
