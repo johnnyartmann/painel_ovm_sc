@@ -1,8 +1,6 @@
 import streamlit as st
 import pandas as pd
 
-# --- CORREÇÃO APLICADA AQUI ---
-# Adicionei 'plot_autor_preso' à lista de importação
 from plotting import (plot_autor_preso, plot_bo_contra_autor, plot_distribuicao_idade, plot_feminicidio_por_ano,
                     plot_feminicidio_serie_temporal, plot_heatmap_cruzado, plot_localidade_crime,
                     plot_mapa_feminicidio, plot_meio_crime, plot_passagem_policial, plot_sankey_agressor,
@@ -298,7 +296,10 @@ def render():
                 "Mostra a concentração de idades das vítimas de feminicídio, ajudando a identificar os períodos da vida de maior risco para este crime.")
         chart_type_idade_vitima = st.selectbox("Tipo de Gráfico", ("Histograma", "Gráfico de Densidade"),
                                                key="chart_type_idade_vitima")
-        df_idade_vitima = st.session_state.df_feminicidio_filtrado.dropna(subset=['idade_vitima'])
+        
+        # --- CORREÇÃO AQUI ---
+        # Passar um DataFrame contendo APENAS a coluna 'idade_vitima'
+        df_idade_vitima = st.session_state.df_feminicidio_filtrado[['idade_vitima']].dropna()
 
         fig_idade_vitima = plot_distribuicao_idade(df_idade_vitima, chart_type_idade_vitima, 'Idade da Vítima',
                                                    '#8e24aa')
@@ -311,7 +312,10 @@ def render():
                 "Similar ao gráfico da vítima, mostra a concentração de idades dos autores de feminicídio, ajudando a traçar o perfil do agressor.")
         chart_type_idade_autor = st.selectbox("Tipo de Gráfico", ("Histograma", "Gráfico de Densidade"),
                                               key="chart_type_idade_autor")
-        df_idade_autor = st.session_state.df_feminicidio_filtrado.dropna(subset=['idade_autor'])
+        
+        # --- CORREÇÃO AQUI ---
+        # Passar um DataFrame contendo APENAS a coluna 'idade_autor'
+        df_idade_autor = st.session_state.df_feminicidio_filtrado[['idade_autor']].dropna()
 
         fig_idade_autor = plot_distribuicao_idade(df_idade_autor, chart_type_idade_autor, 'Idade do Autor', '#ab47bc')
         st.plotly_chart(fig_idade_autor, use_container_width=True, key="idade_autor_fem")
@@ -510,9 +514,7 @@ def render():
                         mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                         key='excel_consolidada_fem'
                     )
-                # O botão de PDF foi removido daqui
 
-                # --- EXIBIÇÃO DA TABELA ---
                 colunas_evolucao = [col for col in tabela_feminicidio.columns if 'Diferença' in str(col)]
                 format_dict = {col: formatar_seta_percentual for col in colunas_evolucao}
 
@@ -552,9 +554,8 @@ def render():
         if not st.session_state.df_feminicidio_filtrado.empty:
             tabela_total_fem = criar_tabela_total_feminicidio(st.session_state.df_feminicidio_filtrado)
             if not tabela_total_fem.empty:
-                # --- BOTÕES DE DOWNLOAD ---
                 st.markdown("##### Exportar Dados da Tabela")
-                col1_export_total_fem, col2_export_total_fem = st.columns(2)  # Ajustado de 3 para 2
+                col1_export_total_fem, col2_export_total_fem = st.columns(2)
                 with col1_export_total_fem:
                     st.download_button(
                         label="📥 Exportar para CSV",
@@ -571,9 +572,7 @@ def render():
                         mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                         key='excel_total_fem'
                     )
-                # O botão de PDF foi removido daqui
 
-                # --- EXIBIÇÃO DA TABELA ---
                 colunas_evolucao = [col for col in tabela_total_fem.columns if 'Diferença' in str(col)]
                 format_dict = {col: formatar_seta_percentual for col in colunas_evolucao}
 
