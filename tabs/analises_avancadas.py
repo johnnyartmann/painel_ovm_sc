@@ -61,7 +61,7 @@ def render():
         # ... (seu código para "Índice de Letalidade" continua aqui, sem alterações)
         st.header("Índice de Letalidade da Violência")
         st.markdown("""
-        **A Grande Pergunta:** Qual a probabilidade de uma denúncia de violência em um determinado município escalar para um feminicídio?
+        **Qual a probabilidade de uma denúncia de violência em um determinado município escalar para um feminicídio?**
 
         Este índice diferencia o volume de denúncias da **falha fatal do sistema de prevenção**. Um município pode ter poucas denúncias, mas uma alta taxa de letalidade, indicando um problema gravíssimo e silencioso. O índice é calculado como:
 
@@ -126,7 +126,7 @@ def render():
         st.markdown("""
         Esta análise segmenta o problema por demografia, em vez de geografia, para identificar janelas de vulnerabilidade específicas na vida de uma mulher para certos tipos de crime. O objetivo é permitir a criação de campanhas de prevenção e políticas de proteção mais direcionadas.
 
-        **A grande questão:** O perfil da violência muda drasticamente conforme a idade da vítima?
+        **O perfil da violência muda drasticamente conforme a idade da vítima?**
         """)
 
         st.subheader("Visualização da Distribuição de Crimes por Faixa Etária")
@@ -175,7 +175,7 @@ def render():
         # ... (seu código para "Efetividade da Denúncia" continua aqui, sem alterações)
         st.header("Índice de Efetividade da Denúncia")
         st.markdown("""
-        **A Grande Pergunta:** Em um município, um alto número de denúncias de crimes "menores" (como ameaça) está correlacionado a um menor número de crimes graves (lesão corporal, feminicídio)? Ou seja, a denúncia está funcionando como um mecanismo de prevenção eficaz?
+        **Em um município, um alto número de denúncias de crimes "menores" (como ameaça) está correlacionado a um menor número de crimes graves (lesão corporal, feminicídio)? Ou seja, a denúncia está funcionando como um mecanismo de prevenção eficaz?**
 
         Este é um proxy para medir a efetividade da resposta do sistema de segurança e apoio. Um sistema eficaz deveria intervir após a primeira denúncia, impedindo a escalada da violência.
         """)
@@ -225,7 +225,7 @@ def render():
     with st.expander("🌐 Contágio Geográfico", expanded=False):
         st.header("Análise de Contágio Geográfico (Hotspots de Vizinhança)")
         st.markdown("""
-        **A Grande Pergunta:** A violência em um município é um fenômeno isolado ou é influenciada pela situação de seus vizinhos? Existem "clusters" regionais de violência que transcendem as fronteiras municipais?
+        **A violência em um município é um fenômeno isolado ou é influenciada pela situação de seus vizinhos? Existem "clusters" regionais de violência que transcendem as fronteiras municipais?**
 
         Esta análise trata a violência como um fenômeno que pode se "espalhar" ou se concentrar em microrregiões, requerendo soluções coordenadas entre múltiplos municípios.
         """)
@@ -273,7 +273,7 @@ def render():
     with st.expander("📅 Análise Sazonal", expanded=False):
         st.header("Sazonalidade e Eventos-Chave: O Calendário do Risco")
         st.markdown("""
-        **A Grande Pergunta:** A violência contra a mulher aumenta de forma previsível em torno de datas ou eventos específicos (feriados, fins de semana prolongados, períodos de férias)?
+        **A violência contra a mulher aumenta de forma previsível em torno de datas ou eventos específicos (feriados, fins de semana prolongados, períodos de férias)?**
 
         Esta análise vai além do gráfico mensal, investigando micro-padrões temporais que podem orientar ações de segurança e campanhas de conscientização.
         """)
