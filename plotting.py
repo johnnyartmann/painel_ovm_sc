@@ -410,10 +410,20 @@ def plot_barras_vulnerabilidade(df_plot):
 
 
 def plot_heatmap_vulnerabilidade(crime_counts_heatmap):
-    """Gera o heatmap de vulnerabilidade."""
-    fig = go.Figure(data=go.Heatmap(z=crime_counts_heatmap.values, x=crime_counts_heatmap.columns,
-                                    y=crime_counts_heatmap.index, colorscale='Purples', hoverongaps=False))
-    fig.update_layout(title="Concentração de Crimes (Absoluto) por Faixa Etária e Tipo",
+    """Gera o heatmap de vulnerabilidade com normalização por coluna (tipo de crime)."""
+    # Normaliza cada coluna dividindo pelo valor máximo daquela coluna
+    df_normalized = crime_counts_heatmap.div(crime_counts_heatmap.max(axis=0), axis=1).fillna(0)
+
+    fig = go.Figure(data=go.Heatmap(
+        z=df_normalized.values,
+        x=crime_counts_heatmap.columns,
+        y=crime_counts_heatmap.index,
+        colorscale='Purples',
+        hoverongaps=False,
+        customdata=crime_counts_heatmap.values,
+        hovertemplate='<b>%{x}</b><br>%{y}<br>Ocorrências: %{customdata}<extra></extra>'
+    ))
+    fig.update_layout(title="Concentração de Crimes por Faixa Etária (Normalizado por Tipo de Crime)",
                       xaxis_title="Tipo de Crime", yaxis_title="Faixa Etária da Vítima")
     return fig
 
@@ -427,30 +437,6 @@ def plot_efetividade_denuncia(df_efetividade):
                      labels={'taxa_crimes_leves': 'Taxa de Crimes Leves (por 1.000 mulheres)',
                              'taxa_crimes_graves': 'Taxa de Crimes Graves (por 1.000 mulheres)'},
                      title="Efetividade da Denúncia: Crimes Leves vs. Graves por Município")
-    fig.update_traces(marker=dict(size=10, opacity=0.7, color='#8e24aa'))
-    return fig
-
-
-def plot_contagio_geografico(df_taxas):
-    """Gera o gráfico de dispersão para o contágio geográfico."""
-    media_propria = df_taxas['taxa_propria'].mean()
-    media_vizinhanca = df_taxas['taxa_vizinhanca'].mean()
-    fig = px.scatter(df_taxas, x='taxa_propria', y='taxa_vizinhanca', hover_name='municipio',
-                     hover_data={'taxa_propria': ':.2f', 'taxa_vizinhanca': ':.2f', 'municipio': False},
-                     labels={'taxa_propria': 'Taxa de Violência do Próprio Município (por mil mulheres)',
-                             'taxa_vizinhanca': 'Taxa Média de Violência da Vizinhança (por mil mulheres)'},
-                     title="Análise de Hotspots: Violência Local vs. Influência da Vizinhança")
-    fig.add_vline(x=media_propria, line_width=1, line_dash="dash", line_color="gray")
-    fig.add_hline(y=media_vizinhanca, line_width=1, line_dash="dash", line_color="gray")
-    max_x, max_y = df_taxas['taxa_propria'].max() * 1.05, df_taxas['taxa_vizinhanca'].max() * 1.05
-    fig.add_annotation(x=media_propria, y=max_y, text="Municípios em Risco", showarrow=False, xanchor='center',
-                       yanchor='top', font=dict(color="orange"))
-    fig.add_annotation(x=max_x, y=max_y, text="Hotspots (Alto-Alto)", showarrow=False, xanchor='right',
-                       yanchor='top', font=dict(color="red"))
-    fig.add_annotation(x=0, y=0, text="Pontos Frios (Baixo-Baixo)", showarrow=False, xanchor='left',
-                       yanchor='bottom', font=dict(color="green"))
-    fig.add_annotation(x=max_x, y=0, text="Ilhas de Violência", showarrow=False, xanchor='right',
-                       yanchor='bottom', font=dict(color="purple"))
     fig.update_traces(marker=dict(size=10, opacity=0.7, color='#8e24aa'))
     return fig
 
@@ -475,4 +461,15 @@ def plot_heatmap_sazonal(heatmap_pivot):
                       xaxis={'type': 'category'},
                       yaxis={'type': 'category', 'categoryorder': 'array',
                              'categoryarray': list(heatmap_pivot.index)})
+    return fig
+
+
+def plot_barras_feriados(df_feriados):
+    """Gera o gráfico de barras para os feriados com mais ocorrências."""
+    fig = px.bar(df_feriados, x='nome_feriado', y='total_ocorrencias',
+                 title="Ocorrências por Feriado",
+                 labels={'nome_feriado': 'Feriado', 'total_ocorrencias': 'Quantidade de Ocorrências'},
+                 template='plotly_white', text='total_ocorrencias')
+    fig.update_traces(marker_color='#8e24aa', textposition='outside')
+    fig.update_layout(xaxis={'categoryorder': 'total descending'})
     return fig
