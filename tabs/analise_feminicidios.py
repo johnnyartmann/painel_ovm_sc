@@ -3,10 +3,11 @@ import pandas as pd
 
 # --- CORREÇÃO APLICADA AQUI ---
 # Adicionei 'plot_autor_preso' à lista de importação
+import numpy as np
 from plotting import (plot_autor_preso, plot_bo_contra_autor, plot_distribuicao_idade, plot_feminicidio_por_ano,
                     plot_feminicidio_serie_temporal, plot_heatmap_cruzado, plot_localidade_crime,
-                    plot_mapa_feminicidio, plot_meio_crime, plot_passagem_policial, plot_sankey_agressor,
-                    plot_scatter_idade, plot_vinculo_autor)
+                    plot_mapa_feminicidio, plot_mapa_letalidade, plot_meio_crime, plot_passagem_policial,
+                    plot_sankey_agressor, plot_scatter_idade, plot_vinculo_autor)
 from utils import to_csv, to_excel, calcular_cagr, colorir_percentual, formatar_seta_percentual
 
 
@@ -150,6 +151,51 @@ def criar_tabela_total_feminicidio(df):
     df_consolidado.insert(0, 'Tipo de Crime', 'Feminicídio')
 
     return df_consolidado
+
+
+def calcular_indice_letalidade(df_geral_filtrado, df_feminicidio_filtrado, agrupamento):
+    """Calcula o Índice de Letalidade da Violência."""
+    coluna_agrupamento_map = {
+        "Município": "municipio_normalizado",
+        "Mesorregião": "mesoregiao",
+        "Associação": "associacao"
+    }
+    if agrupamento not in coluna_agrupamento_map:
+        return pd.DataFrame()
+
+    coluna_agrupamento = coluna_agrupamento_map[agrupamento]
+
+    df_ocorrencias_puras = df_geral_filtrado[df_geral_filtrado['fato_comunicado'] != 'Feminicídio']
+    total_ocorrencias = df_ocorrencias_puras.groupby(coluna_agrupamento).size().reset_index(name='total_ocorrencias')
+
+    total_feminicidios = df_feminicidio_filtrado.groupby(coluna_agrupamento).size().reset_index(
+        name='total_feminicidios')
+
+    df_letalidade = pd.merge(total_ocorrencias, total_feminicidios, on=coluna_agrupamento, how='outer').fillna(0)
+
+    df_letalidade['total_ocorrencias'] = df_letalidade['total_ocorrencias'].astype(int)
+    df_letalidade['total_feminicidios'] = df_letalidade['total_feminicidios'].astype(int)
+
+    soma_total = df_letalidade['total_ocorrencias'] + df_letalidade['total_feminicidios']
+    df_letalidade['indice_letalidade'] = np.where(
+        soma_total > 0,
+        (df_letalidade['total_feminicidios'] / soma_total) * 100,
+        0
+    )
+
+    df_letalidade['total_eventos'] = soma_total
+
+    df_letalidade.rename(columns={coluna_agrupamento: 'localidade'}, inplace=True)
+
+    df_final = df_letalidade[[
+        'localidade',
+        'total_eventos',
+        'total_ocorrencias',
+        'total_feminicidios',
+        'indice_letalidade'
+    ]]
+
+    return df_final.sort_values(by='indice_letalidade', ascending=False)
 
 
 def render():
@@ -539,64 +585,67 @@ def render():
                 st.warning("Não há dados para exibir na tabela de feminicídios com os filtros selecionados.")
         else:
             st.warning("Não há dados para exibir na tabela de feminicídios com os filtros selecionados.")
+
+    st.markdown("---")
+
+    # --- ÍNDICE DE LETALIDADE DA VIOLÊNCIA ---
+    st.header("Índice de Letalidade da Violência")
+    st.markdown("""
+    **Qual a probabilidade de uma denúncia de violência em um determinado município escalar para um feminicídio?**
+
+    Este índice diferencia o volume de denúncias da **falha fatal do sistema de prevenção**. Um município pode ter poucas denúncias, mas uma alta taxa de letalidade, indicando um problema gravíssimo e silencioso. O índice é calculado como:
+
+    `Índice = (Total de Feminicídios / (Total de Ocorrências de Violência + Total de Feminicídios)) * 100`
+
+    Isso representa: *"Para cada 100 ocorrências de violência contra a mulher, X resultam em morte."*
+    """)
+
+    if st.session_state.agrupamento_selecionado == "Consolidado":
+        st.warning(
+            "Por favor, selecione um nível de agrupamento (Município, Mesorregião ou Associação) para visualizar o Índice de Letalidade.")
     else:
-        st.subheader("Tabela Consolidada de Feminicídios (Total SC)")
-        with st.expander("Como interpretar esta tabela?"):
-            st.info(
-                """
-                - **O que mostra:** Um detalhamento anual do número de feminicídios para todo o estado (considerando os filtros).
-                - **Colunas de Diferença:** Mostram a variação percentual de um ano para o outro.
-                - **Tendência (CAGR %):** Indica a tendência de longo prazo (mínimo 3 anos).
-                """
-            )
-        if not st.session_state.df_feminicidio_filtrado.empty:
-            tabela_total_fem = criar_tabela_total_feminicidio(st.session_state.df_feminicidio_filtrado)
-            if not tabela_total_fem.empty:
-                # --- BOTÕES DE DOWNLOAD ---
-                st.markdown("##### Exportar Dados da Tabela")
-                col1_export_total_fem, col2_export_total_fem = st.columns(2)  # Ajustado de 3 para 2
-                with col1_export_total_fem:
-                    st.download_button(
-                        label="📥 Exportar para CSV",
-                        data=to_csv(tabela_total_fem),
-                        file_name='feminicidios_consolidados_sc.csv',
-                        mime='text/csv',
-                        key='csv_total_fem'
-                    )
-                with col2_export_total_fem:
-                    st.download_button(
-                        label="📥 Exportar para Excel",
-                        data=to_excel(tabela_total_fem),
-                        file_name='feminicidios_consolidados_sc.xlsx',
-                        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                        key='excel_total_fem'
-                    )
-                # O botão de PDF foi removido daqui
+        df_letalidade_calculado = calcular_indice_letalidade(st.session_state.df_geral_filtrado,
+                                                                st.session_state.df_feminicidio_filtrado,
+                                                                st.session_state.agrupamento_selecionado)
 
-                # --- EXIBIÇÃO DA TABELA ---
-                colunas_evolucao = [col for col in tabela_total_fem.columns if 'Diferença' in str(col)]
-                format_dict = {col: formatar_seta_percentual for col in colunas_evolucao}
-
-                ano_corrente_parcial = f'{pd.Timestamp.now().year} (Parcial)'
-                colunas_de_anos = [col for col in tabela_total_fem.columns if isinstance(col, int)]
-                if ano_corrente_parcial in tabela_total_fem.columns:
-                    colunas_de_anos.append(ano_corrente_parcial)
-
-                for col in colunas_de_anos:
-                    format_dict[col] = '{:.0f}'
-                format_dict['total'] = '{:.0f}'
-
-                if 'Tendência (CAGR %)' in tabela_total_fem.columns:
-                    format_dict['Tendência (CAGR %)'] = '{:+.1f}%'
-
-                colunas_para_colorir = colunas_evolucao[:]
-                if 'Tendência (CAGR %)' in tabela_total_fem.columns:
-                    colunas_para_colorir.append('Tendência (CAGR %)')
-
-                styler = tabela_total_fem.style.map(colorir_percentual, subset=colunas_para_colorir).format(
-                    format_dict)
-                st.dataframe(styler, use_container_width=True)
-            else:
-                st.warning("Não há dados para exibir na tabela de feminicídios com os filtros selecionados.")
+        if df_letalidade_calculado.empty:
+            st.info("Não há dados suficientes para calcular o Índice de Letalidade com os filtros selecionados.")
         else:
-            st.warning("Não há dados para exibir na tabela de feminicídios com os filtros selecionados.")
+            st.subheader(
+                f"Mapa Coroplético do Índice de Letalidade por {st.session_state.agrupamento_selecionado}")
+            with st.expander("Como interpretar este mapa?"):
+                st.info(
+                    """
+                    - **O que mostra:** O risco de uma ocorrência de violência se tornar um feminicídio em cada localidade.
+                    - **Como ler:** Tons mais escuros (vermelho/laranja) indicam uma maior letalidade, ou seja, uma maior proporção de casos que terminam em morte, mesmo que o número total de ocorrências seja baixo. É um indicador de falha na rede de proteção.
+                    """
+                )
+            if st.session_state.agrupamento_selecionado == "Município":
+                map_df_letalidade = df_letalidade_calculado.rename(columns={'localidade': 'municipio_normalizado'})
+            else:
+                mapa_grupo_para_indice = df_letalidade_calculado.set_index('localidade')['indice_letalidade']
+                coluna_agrupamento = "mesoregiao" if st.session_state.agrupamento_selecionado == "Mesorregião" else "associacao"
+                municipios_no_filtro = st.session_state.df_geral_filtrado[
+                    ['municipio_normalizado', coluna_agrupamento]].drop_duplicates()
+                municipios_no_filtro['indice_letalidade'] = municipios_no_filtro[coluna_agrupamento].map(
+                    mapa_grupo_para_indice)
+                map_df_letalidade = municipios_no_filtro.fillna(0)
+
+            fig_mapa_letalidade = plot_mapa_letalidade(map_df_letalidade, st.session_state.geojson_sc)
+            st.plotly_chart(fig_mapa_letalidade, use_container_width=True, key="mapa_letalidade")
+            st.markdown("---")
+
+            st.subheader(f"Ranking do Índice de Letalidade por {st.session_state.agrupamento_selecionado}")
+            st.markdown(
+                "A tabela abaixo classifica as localidades com maior risco de letalidade. O índice alto, mesmo com poucas ocorrências, é um sinal de alerta.")
+            df_ranking = df_letalidade_calculado.rename(
+                columns={'localidade': st.session_state.agrupamento_selecionado,
+                            'total_eventos': 'Total de Eventos (Ocorrências + Feminicídios)',
+                            'total_ocorrencias': 'Ocorrências de Violência',
+                            'total_feminicidios': 'Feminicídios',
+                            'indice_letalidade': 'Índice de Letalidade'}).set_index(
+                st.session_state.agrupamento_selecionado)
+            st.dataframe(df_ranking.style.format(
+                {'Índice de Letalidade': '{:.2f}', 'Total de Eventos (Ocorrências + Feminicídios)': '{:.0f}',
+                    'Ocorrências de Violência': '{:.0f}', 'Feminicídios': '{:.0f}'}).background_gradient(
+                cmap='OrRd', subset=['Índice de Letalidade']), use_container_width=True)

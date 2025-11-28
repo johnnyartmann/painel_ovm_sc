@@ -3,7 +3,6 @@ import streamlit as st
 from data_loader import carregar_dados_processados
 from tabs import analise_feminicidios
 from tabs import analise_geral
-from tabs import analises_avancadas
 from tabs import download
 from tabs import glossario
 
@@ -50,10 +49,9 @@ else:
 # --- SIDEBAR E FILTROS ---
 st.sidebar.image("logo_ovm.jpeg", use_container_width=True)
 
-tab_geral, tab_feminicidio, tab_analises_avancadas, tab_glossario, tab_download = st.tabs([
+tab_geral, tab_feminicidio, tab_glossario, tab_download = st.tabs([
     "📊 Análise Geral",
     "🚨 Análise de Feminicídios",
-    "🔬 Análises Avançadas",
     "📖 Metodologia e Glossário",
     "📥 Download de Dados"
 ])
@@ -238,8 +236,6 @@ if not st.session_state.df_geral.empty:
         analise_geral.render()
     with tab_feminicidio:
         analise_feminicidios.render()
-    with tab_analises_avancadas:
-        analises_avancadas.render()
     with tab_glossario:
         glossario.render()
     with tab_download:
