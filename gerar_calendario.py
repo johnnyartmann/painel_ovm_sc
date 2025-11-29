@@ -1,6 +1,7 @@
 import pandas as pd
 import holidays
 from datetime import date, timedelta
+from dateutil.easter import easter
 
 def criar_base_calendario_brasil(start_year=2020, end_year=2040):
     """
@@ -19,7 +20,29 @@ def criar_base_calendario_brasil(start_year=2020, end_year=2040):
 
     # 1. Obter todos os feriados nacionais do período usando a biblioteca holidays
     br_holidays = holidays.Brazil(years=range(start_year, end_year + 1))
-    
+
+    # Adicionar feriados móveis e específicos solicitados
+    for year in range(start_year, end_year + 1):
+        easter_date = easter(year)
+
+        # Carnaval (Sábado a Terça-feira)
+        br_holidays[easter_date - timedelta(days=50)] = "Sábado de Carnaval"
+        br_holidays[easter_date - timedelta(days=49)] = "Domingo de Carnaval"
+        br_holidays[easter_date - timedelta(days=48)] = "Segunda-feira de Carnaval"
+        br_holidays[easter_date - timedelta(days=47)] = "Terça-feira de Carnaval"
+
+        # Quarta-feira de Cinzas
+        br_holidays[easter_date - timedelta(days=46)] = "Quarta-feira de Cinzas"
+
+        # Páscoa
+        br_holidays[easter_date] = "Páscoa"
+
+        # Corpus Christi (60 dias após a Páscoa)
+        br_holidays[easter_date + timedelta(days=60)] = "Corpus Christi"
+
+        # Véspera de Natal
+        br_holidays[date(year, 12, 24)] = "Véspera de Natal"
+
     # Converter para um formato mais fácil de usar (DataFrame)
     df_feriados = pd.DataFrame(list(br_holidays.items()), columns=['data', 'nome_feriado'])
     df_feriados['data'] = pd.to_datetime(df_feriados['data'])
@@ -28,7 +51,7 @@ def criar_base_calendario_brasil(start_year=2020, end_year=2040):
     # 2. Criar um DataFrame com TODOS os dias do período
     start_date = date(start_year, 1, 1)
     end_date = date(end_year, 12, 31)
-    
+
     df_calendario = pd.DataFrame({
         'data': pd.to_datetime(pd.date_range(start_date, end_date, freq='D'))
     })
@@ -37,7 +60,7 @@ def criar_base_calendario_brasil(start_year=2020, end_year=2040):
     df_completo = pd.merge(df_calendario, df_feriados, on='data', how='left')
 
     # 4. Criar as colunas de análise (flags)
-    
+
     # Flag para identificar se o dia é um feriado
     df_completo['is_feriado'] = df_completo['nome_feriado'].notna()
 
@@ -49,7 +72,7 @@ def criar_base_calendario_brasil(start_year=2020, end_year=2040):
     # Flag para identificar a véspera de feriado (dia útil)
     # Usamos shift(-1) para "olhar" o dia seguinte
     df_completo['is_vespera_feriado'] = (
-        (df_completo['is_feriado'].shift(-1) == True) & 
+        (df_completo['is_feriado'].shift(-1) == True) &
         (df_completo['is_fim_de_semana'] == False)
     ).fillna(False)
 
@@ -76,10 +99,10 @@ if __name__ == "__main__":
     ANO_FIM = 2040
     NOME_ARQUIVO_EXCEL = "data/base_calendario_feriados.xlsx"
     NOME_ARQUIVO_CSV = "data/base_calendario_feriados.csv"
-    
+
     # Gera o DataFrame
     calendario_brasil = criar_base_calendario_brasil(ANO_INICIO, ANO_FIM)
-    
+
     # --- SALVAR O ARQUIVO ---
     # Salvar em formato Excel (recomendado)
     try:
@@ -94,7 +117,7 @@ if __name__ == "__main__":
     #     print(f"Base de dados salva com sucesso em: '{NOME_ARQUIVO_CSV}'")
     # except Exception as e:
     #     print(f"Erro ao salvar o arquivo CSV: {e}")
-        
+
     print("\nVisualização das 5 primeiras linhas do arquivo gerado:")
     print(calendario_brasil.head())
     print("\nExemplo de um feriado (Ano Novo):")
