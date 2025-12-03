@@ -1,5 +1,3 @@
---- START OF FILE preprocess_data.py ---
-
 import pandas as pd
 import json
 import os
