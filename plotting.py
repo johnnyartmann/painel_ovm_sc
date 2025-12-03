@@ -29,7 +29,7 @@ def plot_mapa_geral(map_df, geojson_sc, color_col, label_text, agrupamento_selec
         locations='municipio_normalizado',
         featureidkey="properties.NM_MUN_NORMALIZADO",
         color=color_col, 
-        color_continuous_scale="Purples", 
+        color_continuous_scale="Reds", 
         mapbox_style="carto-positron",
         zoom=6,
         center={"lat": -27.59, "lon": -50.52}, 
@@ -462,7 +462,7 @@ def plot_mapa_letalidade(map_df_letalidade, geojson_sc):
     """Gera o mapa coroplético do índice de letalidade."""
     fig = px.choropleth_mapbox(map_df_letalidade, geojson=geojson_sc, locations='municipio_normalizado',
                                featureidkey="properties.NM_MUN_NORMALIZADO",
-                               color='indice_letalidade', color_continuous_scale="OrRd",
+                               color='indice_letalidade', color_continuous_scale="Reds",
                                mapbox_style="carto-positron", zoom=6,
                                center={"lat": -27.59, "lon": -50.52}, opacity=0.7,
                                labels={'indice_letalidade': f'Índice de Letalidade (a cada 100 eventos)'})
