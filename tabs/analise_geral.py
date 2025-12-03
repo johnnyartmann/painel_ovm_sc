@@ -715,7 +715,14 @@ def render():
     if not df_vulnerabilidade.empty:
         crime_counts_heatmap = df_vulnerabilidade.groupby(['faixa_etaria', 'fato_comunicado'],
                                                             observed=False).size().unstack(fill_value=0)
+        
         fig_heatmap = plot_heatmap_vulnerabilidade(crime_counts_heatmap)
+        
+        fig_heatmap.update_layout(
+            xaxis=dict(tickangle=45), 
+            margin=dict(b=100)        
+        )
+        
         st.plotly_chart(fig_heatmap, use_container_width=True, key="heatmap_vulnerabilidade")
     else:
         st.warning("Não há dados suficientes para gerar o heatmap com os filtros selecionados.")
@@ -728,7 +735,7 @@ def render():
     """)
 
     crimes_leves = ["Ameaça", "Vias de Fato"]
-    crimes_graves = ["Lesão Corporal Dolosa", "Estupro", "Feminicídio"]
+    crimes_graves = ["Lesão corporal leve - Dolosa", "Lesão corporal grave ou gravíssima - Dolosa", "Estupro", "Feminicídio"]
 
     if not st.session_state.df_geral_filtrado.empty and not st.session_state.df_populacao.empty:
         anos_no_filtro = st.session_state.df_geral_filtrado['ano'].unique()
