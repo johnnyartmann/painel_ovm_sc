@@ -1,3 +1,5 @@
+--- START OF FILE preprocess_data.py ---
+
 import pandas as pd
 import json
 import os
@@ -39,6 +41,7 @@ def carregar_e_processar_dados():
         df_calendario['data'] = pd.to_datetime(df_calendario['data'])
         dfs['calendario'] = df_calendario
 
+        # --- PROCESSAMENTO DA BASE GERAL ---
         df_geral = pd.read_excel('data/base_geral.xlsx')
         df_geral.columns = (df_geral.columns.str.strip().str.lower()
                             .str.replace(' ', '_', regex=False).str.replace('ã', 'a', regex=False)
@@ -47,6 +50,18 @@ def carregar_e_processar_dados():
             'data_do_fato': 'data_fato', 'município': 'municipio',
             'fato_comunicado': 'fato_comunicado', 'idade': 'idade_vitima'
         }, inplace=True)
+
+        # --- INÍCIO DO ETL: PADRONIZAÇÃO DE FATOS ---
+        correcoes_fatos = {
+            "Lesão Corporal Dolosa": "Lesão corporal grave ou gravíssima - Dolosa",
+            "Estupro coletivo": "Estupro"
+        }
+        if 'fato_comunicado' in df_geral.columns:
+            # O replace procura o valor exato da chave e substitui pelo valor
+            df_geral['fato_comunicado'] = df_geral['fato_comunicado'].replace(correcoes_fatos)
+            print("ETL de 'Fato Comunicado' aplicado com sucesso na base geral.")
+        # --- FIM DO ETL ---
+
         df_geral['data_fato'] = pd.to_datetime(df_geral['data_fato'])
         df_geral['idade_vitima'] = pd.to_numeric(df_geral['idade_vitima'], errors='coerce')
         df_geral['municipio_normalizado'] = df_geral['municipio'].apply(normalizar_nome)
