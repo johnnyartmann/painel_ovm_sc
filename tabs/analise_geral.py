@@ -199,20 +199,134 @@ def criar_tabela_populacional_agrupada(df_crimes, df_pop, df_regioes, agrupament
 
 def render():
     st.header("Violência Contra a Mulher em Santa Catarina")
+
+    # --- BLOCOS INTELIGENTES DE CONTEXTO ---
     
-    # --- INÍCIO DA INSERÇÃO: EXIBIÇÃO DO PERÍODO ---
-    # Formata as datas que estão no filtro (session_state) para DD/MM/AAAA
-    data_ini_formatada = st.session_state.data_inicial.strftime('%d/%m/%Y')
-    data_fim_formatada = st.session_state.data_final.strftime('%d/%m/%Y')
+    # 1. Preparação dos Dados para Exibição
     
-    # Exibe o período em destaque (usando markdown ou info)
-    st.markdown(f"##### 📅 Período Analisado: **{data_ini_formatada}** até **{data_fim_formatada}**")
-    # --- FIM DA INSERÇÃO ---
+    # Datas
+    data_ini = st.session_state.data_inicial
+    data_fim = st.session_state.data_final
+    dias_totais = (data_fim - data_ini).days
+    anos_aprox = dias_totais / 365
+    
+    # Mesorregiões
+    # Verifica quantos itens únicos existem no filtro vs total possível
+    total_mesos_possiveis = st.session_state.df_geral['mesoregiao'].nunique()
+    mesos_selecionadas = st.session_state.df_geral_filtrado['mesoregiao'].unique()
+    qtd_mesos = len(mesos_selecionadas)
+    
+    texto_meso = ""
+    detalhe_meso = None
+    if qtd_mesos == total_mesos_possiveis:
+        texto_meso = "Todo o Estado (SC)"
+        subtexto_meso = "Todas as Mesorregiões"
+    elif qtd_mesos <= 2:
+        texto_meso = ", ".join(mesos_selecionadas)
+        subtexto_meso = "Mesorregiões Específicas"
+    else:
+        texto_meso = f"{qtd_mesos} Mesorregiões"
+        subtexto_meso = "Seleção Parcial"
+        detalhe_meso = ", ".join(sorted(mesos_selecionadas))
+
+    # Municípios
+    total_mun_possiveis = 295 # Fixo de SC
+    muns_selecionados = st.session_state.df_geral_filtrado['municipio'].unique()
+    qtd_mun = len(muns_selecionados)
+    
+    texto_mun = ""
+    mostrar_expander_mun = False
+    
+    if qtd_mun >= 293: # Margem de erro pequena caso falte algum dado
+        texto_mun = "Todos os 295 Municípios"
+        cor_mun = "normal"
+    elif qtd_mun == 1:
+        texto_mun = muns_selecionados[0] # Mostra o nome da cidade
+        cor_mun = "normal"
+    elif qtd_mun <= 3:
+        texto_mun = ", ".join(muns_selecionados[:3]) # Lista as 3 cidades
+        cor_mun = "normal"
+    else:
+        texto_mun = f"{qtd_mun} Municípios Selecionados"
+        cor_mun = "off" # Indicador visual
+        mostrar_expander_mun = True
+
+    # 2. Renderização Visual (Cards)
+    
+    # Estilo CSS inline para criar os cards bonitos
+    st.markdown("""
+    <style>
+        .smart-card {
+            background-color: #f8f9fa;
+            border-left: 5px solid #8e24aa;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
+        }
+        .smart-card h4 {
+            margin: 0;
+            color: #424242;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .smart-card p {
+            margin: 5px 0 0 0;
+            color: #8e24aa;
+            font-size: 18px;
+            font-weight: 700;
+        }
+        .smart-card span {
+            font-size: 12px;
+            color: #757575;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    c1, c2, c3 = st.columns(3)
+
+    with c1:
+        st.markdown(f"""
+        <div class="smart-card">
+            <h4>📅 Período Analisado</h4>
+            <p>{data_ini.strftime('%d/%m/%Y')} - {data_fim.strftime('%d/%m/%Y')}</p>
+            <span>Duração: {dias_totais} dias (~{anos_aprox:.1f} anos)</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with c2:
+        st.markdown(f"""
+        <div class="smart-card">
+            <h4>🗺️ Abrangência Regional</h4>
+            <p>{texto_meso}</p>
+            <span>{subtexto_meso}</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with c3:
+        st.markdown(f"""
+        <div class="smart-card">
+            <h4>📍 Municípios</h4>
+            <p>{texto_mun}</p>
+            <span>Filtro Ativo no Painel</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # Expander condicional para não poluir a tela
+    if mostrar_expander_mun or detalhe_meso:
+        with st.expander("🔎 Ver lista detalhada das localidades selecionadas"):
+            if detalhe_meso:
+                st.markdown(f"**Mesorregiões:** {detalhe_meso}")
+            if mostrar_expander_mun:
+                lista_mun_txt = ", ".join(sorted(muns_selecionados))
+                st.markdown(f"**Municípios:** {lista_mun_txt}")
+
+    st.markdown("---")
+    
+    # --- FIM DOS BLOCOS INTELIGENTES ---
 
     st.markdown(
         "Visão geral dos registros de ocorrências de violência com a mulher no âmbito doméstico (Lei Maria da Penha), no Estado de Santa Catarina.")
-
-    total_registros = st.session_state.df_geral_filtrado.shape[0]
 
     total_registros = st.session_state.df_geral_filtrado.shape[0]
     
