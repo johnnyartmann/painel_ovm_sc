@@ -197,18 +197,135 @@ def calcular_indice_letalidade(df_geral_filtrado, df_feminicidio_filtrado, agrup
 def render():
     st.header("Análise de Feminicídios Consumados")
 
-    total_feminicidios = st.session_state.df_feminicidio_filtrado.shape[0]
-    idade_media_vitima_fem = st.session_state.df_feminicidio_filtrado['idade_vitima'].mean()
-    idade_media_autor_fem = st.session_state.df_feminicidio_filtrado['idade_autor'].mean()
-    texto_idade_vitima = f"{idade_media_vitima_fem:.1f} anos" if not pd.isna(
-        idade_media_vitima_fem) else "Dados Insuficientes"
-    texto_idade_autor = f"{idade_media_autor_fem:.1f} anos" if not pd.isna(
-        idade_media_autor_fem) else "Dados Insuficientes"
-    col1_fem, col2_fem, col3_fem = st.columns(3)
-    with col1_fem: st.metric(label="Total de Feminicídios", value=total_feminicidios)
-    with col2_fem: st.metric(label="Idade Média da Vítima", value=texto_idade_vitima)
-    with col3_fem: st.metric(label="Idade Média do Autor", value=texto_idade_autor)
+    # --- BLOCOS INTELIGENTES DE CONTEXTO ---
+    
+    # 1. Preparação dos Dados para Exibição
+    
+    # Datas
+    data_ini = st.session_state.data_inicial
+    data_fim = st.session_state.data_final
+    dias_totais = (data_fim - data_ini).days
+    anos_aprox = dias_totais / 365
+    
+    # Mesorregiões (Baseado no DF de Feminicídio)
+    mesos_no_filtro = st.session_state.df_feminicidio_filtrado['mesoregiao'].unique()
+    mesos_reais = [m for m in mesos_no_filtro if m != 'Não informado']
+    qtd_mesos = len(mesos_reais)
+    
+    texto_meso = ""
+    detalhe_meso = None
+    
+    # Lógica fixa para SC (6 mesorregiões)
+    if qtd_mesos >= 6:
+        texto_meso = "Todo o Estado (SC)"
+        subtexto_meso = "Todas as 6 Mesorregiões"
+    elif qtd_mesos == 0:
+        texto_meso = "Nenhuma Ocorrência"
+        subtexto_meso = "No filtro selecionado"
+    elif qtd_mesos <= 2:
+        texto_meso = ", ".join(mesos_reais)
+        subtexto_meso = "Mesorregiões com Casos"
+    else:
+        texto_meso = f"{qtd_mesos} Mesorregiões"
+        subtexto_meso = "Seleção Parcial"
+        detalhe_meso = ", ".join(sorted(mesos_reais))
+
+    # Municípios (Baseado no DF de Feminicídio)
+    muns_selecionados = st.session_state.df_feminicidio_filtrado['municipio'].unique()
+    qtd_mun = len(muns_selecionados)
+    
+    texto_mun = ""
+    mostrar_expander_mun = False
+    
+    # Nota: Usamos 295 como referência total de SC
+    if qtd_mun >= 293: 
+        texto_mun = "Todos os Municípios"
+        subtexto_mun = "Com registro de feminicídio"
+    elif qtd_mun == 0:
+        texto_mun = "Nenhum Município"
+        subtexto_mun = "Sem registros no período"
+    elif qtd_mun == 1:
+        texto_mun = muns_selecionados[0]
+        subtexto_mun = "Filtro Específico"
+    elif qtd_mun <= 3:
+        texto_mun = ", ".join(muns_selecionados[:3])
+        subtexto_mun = "Municípios com Casos"
+    else:
+        texto_mun = f"{qtd_mun} Municípios"
+        subtexto_mun = "Com registro de feminicídio"
+        mostrar_expander_mun = True
+
+    # 2. Renderização Visual (Cards)
+    st.markdown("""
+    <style>
+        .smart-card {
+            background-color: #f8f9fa;
+            border-left: 5px solid #d81b60; /* Rosa escuro para diferenciar do Geral (Roxo) */
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
+        }
+        .smart-card h4 {
+            margin: 0;
+            color: #424242;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .smart-card p {
+            margin: 5px 0 0 0;
+            color: #d81b60; /* Rosa escuro */
+            font-size: 18px;
+            font-weight: 700;
+        }
+        .smart-card span {
+            font-size: 12px;
+            color: #757575;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    c1, c2, c3 = st.columns(3)
+
+    with c1:
+        st.markdown(f"""
+        <div class="smart-card">
+            <h4>📅 Período Analisado</h4>
+            <p>{data_ini.strftime('%d/%m/%Y')} - {data_fim.strftime('%d/%m/%Y')}</p>
+            <span>Duração: {dias_totais} dias (~{anos_aprox:.1f} anos)</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with c2:
+        st.markdown(f"""
+        <div class="smart-card">
+            <h4>🗺️ Abrangência Regional</h4>
+            <p>{texto_meso}</p>
+            <span>{subtexto_meso}</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with c3:
+        st.markdown(f"""
+        <div class="smart-card">
+            <h4>📍 Municípios Afetados</h4>
+            <p>{texto_mun}</p>
+            <span>{subtexto_mun}</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+    if mostrar_expander_mun or detalhe_meso:
+        with st.expander("🔎 Ver lista detalhada das localidades com registros"):
+            if detalhe_meso:
+                st.markdown(f"**Mesorregiões:** {detalhe_meso}")
+            if mostrar_expander_mun:
+                lista_mun_txt = ", ".join(sorted(muns_selecionados))
+                st.markdown(f"**Municípios:** {lista_mun_txt}")
+
     st.markdown("---")
+    # --- FIM DOS BLOCOS INTELIGENTES ---
+
+    total_feminicidios = st.session_state.df_feminicidio_filtrado.shape[0]
 
     st.subheader(f"Distribuição Geográfica dos Feminicídios por {st.session_state.agrupamento_selecionado}")
     with st.expander("Como interpretar este mapa?"):
