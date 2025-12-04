@@ -199,6 +199,8 @@ def criar_tabela_populacional_agrupada(df_crimes, df_pop, df_regioes, agrupament
 
 def render():
     st.header("Violência contra a Mulher em Santa Catarina")
+    st.markdown(
+        "Visão geral dos registros de ocorrências de violência com a mulher no âmbito doméstico (Lei Maria da Penha), no Estado de Santa Catarina.")
 
     # --- BLOCOS INTELIGENTES DE CONTEXTO ---
     
@@ -324,9 +326,6 @@ def render():
     st.markdown("---")
     
     # --- FIM DOS BLOCOS INTELIGENTES ---
-
-    st.markdown(
-        "Visão geral dos registros de ocorrências de violência com a mulher no âmbito doméstico (Lei Maria da Penha), no Estado de Santa Catarina.")
 
     total_registros = st.session_state.df_geral_filtrado.shape[0]
     
