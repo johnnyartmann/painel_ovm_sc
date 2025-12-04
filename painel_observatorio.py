@@ -79,6 +79,7 @@ if not st.session_state.df_geral.empty:
             value=min_date,
             min_value=min_date,
             max_value=max_date,
+            format="DD/MM/YYYY",
             help="Selecione a data de início do período."
         )
 
@@ -87,6 +88,7 @@ if not st.session_state.df_geral.empty:
             value=max_date,
             min_value=st.session_state.data_inicial,
             max_value=max_date,
+            format="DD/MM/YYYY",
             help="Selecione a data de fim do período."
         )
 
