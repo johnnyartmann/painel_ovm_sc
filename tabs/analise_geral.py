@@ -198,7 +198,7 @@ def criar_tabela_populacional_agrupada(df_crimes, df_pop, df_regioes, agrupament
          '% de Mulheres Vítimas (anual)']].set_index(agrupamento)
 
 def render():
-    st.header("Violência Contra a Mulher em Santa Catarina")
+    st.header("Violência contra a Mulher em Santa Catarina")
 
     # --- BLOCOS INTELIGENTES DE CONTEXTO ---
     
