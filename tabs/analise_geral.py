@@ -197,11 +197,22 @@ def criar_tabela_populacional_agrupada(df_crimes, df_pop, df_regioes, agrupament
         [agrupamento, 'População Feminina', 'Média Anual de Fatos Ocorridos', 'Fatos por Mil Mulheres (anual)',
          '% de Mulheres Vítimas (anual)']].set_index(agrupamento)
 
-
 def render():
-    st.header("Violência contra a Mulher em Santa Catarina")
+    st.header("Violência Contra a Mulher em Santa Catarina")
+    
+    # --- INÍCIO DA INSERÇÃO: EXIBIÇÃO DO PERÍODO ---
+    # Formata as datas que estão no filtro (session_state) para DD/MM/AAAA
+    data_ini_formatada = st.session_state.data_inicial.strftime('%d/%m/%Y')
+    data_fim_formatada = st.session_state.data_final.strftime('%d/%m/%Y')
+    
+    # Exibe o período em destaque (usando markdown ou info)
+    st.markdown(f"##### 📅 Período Analisado: **{data_ini_formatada}** até **{data_fim_formatada}**")
+    # --- FIM DA INSERÇÃO ---
+
     st.markdown(
         "Visão geral dos registros de ocorrências de violência com a mulher no âmbito doméstico (Lei Maria da Penha), no Estado de Santa Catarina.")
+
+    total_registros = st.session_state.df_geral_filtrado.shape[0]
 
     total_registros = st.session_state.df_geral_filtrado.shape[0]
     
