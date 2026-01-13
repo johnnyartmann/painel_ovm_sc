@@ -1,0 +1,53 @@
+/* --- STICKY HEADER STYLES --- */
+
+/* Esconde o Header padrão do Streamlit */
+header[data-testid="stHeader"] {
+    display: none;
+}
+
+/* Ajusta o padding do topo */
+.main .block-container {
+    padding-top: 2rem !important;
+    max-width: 100%;
+}
+
+/* 
+   ESTRATÉGIA DE FIXAÇÃO ROBUSTA
+   Alvo: O container do Streamlit (stVerticalBlock) que contém nosso marcador #header-marker.
+   Suporte: Chrome 105+, Edge 105+ (Maioria dos usuários modernos).
+*/
+div[data-testid="stVerticalBlock"]:has(div#header-marker) {
+    position: sticky;
+    top: 0;
+    z-index: 9999;
+    /* Garante que fique acima de tudo */
+    background-color: #f5f7fa;
+    /* Mesma cor do fundo, opaco */
+    padding-top: 1rem;
+    padding-bottom: 0.5rem;
+    margin-top: -3rem;
+    /* Puxa para cima para cobrir espaço vazio */
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Estilo para os botões de navegação */
+div[data-testid="stHorizontalBlock"] button {
+    border-radius: 20px;
+    font-weight: 600;
+    border: 1px solid #e0e0e0;
+    transition: all 0.3s ease;
+}
+
+div[data-testid="stHorizontalBlock"] button:hover {
+    border-color: #8e24aa;
+    color: #8e24aa;
+    transform: translateY(-2px);
+}
+
+div[data-testid="stHorizontalBlock"] button[kind="primary"] {
+    background: linear-gradient(135deg, #8e24aa 0%, #ab47bc 100%);
+    border: none;
+    color: white;
+    box-shadow: 0 4px 6px rgba(142, 36, 170, 0.3);
+}
