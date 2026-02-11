@@ -81,7 +81,7 @@ def carregar_e_processar_dados():
             'TIPO DE LOCAL': 'tipo_local',
             'LOCALIDADE': 'localidade',
             'IDADE VITIMA': 'idade_vitima',
-            'ETNIA/RAÇA VITIMA': 'etnia_vitima', 
+            'ETNIA/RAÇA': 'etnia_vitima', 
             'RELAÇÃO COM O AUTOR': 'relacao_autor',
             'TEMPO DE RELACIONAMENTO': 'tempo_relacionamento',
             'FILHOS COM O AUTOR': 'filhos_com_autor',
