@@ -66,7 +66,8 @@ if not st.session_state.df_geral.empty:
             "Agrupar por",
             options=["Consolidado", "Município", "Mesorregião", "Associação"],
             index=0,
-            help="Escolha como os dados devem ser agrupados nos gráficos e tabelas."
+            help="Escolha como os dados devem ser agrupados nos gráficos e tabelas.",
+            key="agrupamento_selecionado_widget"
         )
 
         # --- PERÍODO ---
@@ -80,7 +81,8 @@ if not st.session_state.df_geral.empty:
             min_value=min_date,
             max_value=max_date,
             help="Selecione a data de início do período.",
-            format="DD/MM/YYYY"
+            format="DD/MM/YYYY",
+            key="data_inicial_widget"
         )
 
         st.session_state.data_final = st.date_input(
@@ -89,7 +91,8 @@ if not st.session_state.df_geral.empty:
             min_value=st.session_state.data_inicial,
             max_value=max_date,
             help="Selecione a data de fim do período.",
-            format="DD/MM/YYYY"
+            format="DD/MM/YYYY",
+            key="data_final_widget"
         )
 
         # DataFrame filtrado apenas por data para popular as opções dos outros filtros
@@ -103,7 +106,7 @@ if not st.session_state.df_geral.empty:
         
         # Filtro de Município
         municipios_disponiveis = sorted(df_geral_filtrado_por_data['municipio'].dropna().unique())
-        todos_municipios = st.checkbox("Todos os municípios", value=True, help="Marque para selecionar todos")
+        todos_municipios = st.checkbox("Todos os municípios", value=True, help="Marque para selecionar todos", key="todos_municipios_check")
 
         if todos_municipios:
             municipio_selecionado = municipios_disponiveis
@@ -111,7 +114,8 @@ if not st.session_state.df_geral.empty:
             municipio_selecionado = st.multiselect(
                 "Município(s) específico(s)",
                 options=municipios_disponiveis,
-                default=[]
+                default=[],
+                key="municipio_selecionado_multi"
             )
             if not municipio_selecionado:
                 st.warning("Nenhum município selecionado. Exibindo dados de todos os municípios.")
@@ -123,7 +127,8 @@ if not st.session_state.df_geral.empty:
             "Mesorregião(ões)",
             options=mesoregioes_disponiveis,
             default=mesoregioes_disponiveis,
-            help="Filtre por mesorregião de Santa Catarina"
+            help="Filtre por mesorregião de Santa Catarina",
+            key="mesoregiao_selecionado_multi"
         )
 
         # Filtro de Associação
@@ -132,13 +137,14 @@ if not st.session_state.df_geral.empty:
             "Associação(ões)",
             options=associacoes_disponiveis,
             default=associacoes_disponiveis,
-            help="Filtre por associação de municípios"
+            help="Filtre por associação de municípios",
+            key="associacao_selecionado_multi"
         )
         
         # --- TIPO DE CRIME ---
         st.subheader("🚨 TIPO DE CRIME")
         fatos_disponiveis = sorted(df_geral_filtrado_por_data['fato_comunicado'].unique())
-        todos_crimes = st.checkbox("Todos os tipos", value=True, help="Marque para incluir todos os crimes")
+        todos_crimes = st.checkbox("Todos os tipos", value=True, help="Marque para incluir todos os crimes", key="todos_crimes_check")
 
         if todos_crimes:
             fato_selecionado = fatos_disponiveis
@@ -146,7 +152,8 @@ if not st.session_state.df_geral.empty:
             fato_selecionado = st.multiselect(
                 "Tipo(s) de crime",
                 options=fatos_disponiveis,
-                default=[]
+                default=[],
+                key="fato_selecionado_multi"
             )
             if not fato_selecionado:
                 st.warning("Nenhum tipo de crime selecionado. Exibindo todos os tipos.")
@@ -159,7 +166,8 @@ if not st.session_state.df_geral.empty:
             min_value=0,
             max_value=100,
             value=(0, 100),
-            help="Ajuste o intervalo de idade das vítimas. Se o valor máximo for 100, incluirá todas as idades acima."
+            help="Ajuste o intervalo de idade das vítimas. Se o valor máximo for 100, incluirá todas as idades acima.",
+            key="idade_selecionada_slider"
         )
         idade_max_texto = "100+ anos" if idade_selecionada[1] == 100 else f"{idade_selecionada[1]} anos"
         st.caption(f"Idades: {idade_selecionada[0]} a {idade_max_texto}")
@@ -182,16 +190,16 @@ if not st.session_state.df_geral.empty:
         st.subheader("📊 FILTROS POPULACIONAIS")
         
         min_pop, max_pop = int(st.session_state.df_populacao['populacao_feminina'].min()), int(st.session_state.df_populacao['populacao_feminina'].max())
-        pop_selecionada = st.slider("População Feminina", min_value=min_pop, max_value=max_pop, value=(min_pop, max_pop))
+        pop_selecionada = st.slider("População Feminina", min_value=min_pop, max_value=max_pop, value=(min_pop, max_pop), key="pop_selecionada_slider")
 
         min_media_fatos, max_media_fatos = float(df_populacional_metrics['media_anual_fatos'].min()), float(df_populacional_metrics['media_anual_fatos'].max())
-        media_fatos_selecionada = st.slider("Média Anual de Fatos", min_value=min_media_fatos, max_value=max_media_fatos, value=(min_media_fatos, max_media_fatos))
+        media_fatos_selecionada = st.slider("Média Anual de Fatos", min_value=min_media_fatos, max_value=max_media_fatos, value=(min_media_fatos, max_media_fatos), key="media_fatos_selecionada_slider")
 
         min_taxa, max_taxa = float(df_populacional_metrics['taxa_por_mil_mulheres'].min()), float(df_populacional_metrics['taxa_por_mil_mulheres'].max())
-        taxa_selecionada = st.slider("Fatos por Mil Mulheres", min_value=min_taxa, max_value=max_taxa, value=(min_taxa, max_taxa))
+        taxa_selecionada = st.slider("Fatos por Mil Mulheres", min_value=min_taxa, max_value=max_taxa, value=(min_taxa, max_taxa), key="taxa_selecionada_slider")
 
         min_perc, max_perc = float(df_populacional_metrics['percentual_mulheres_vitimas'].min()), float(df_populacional_metrics['percentual_mulheres_vitimas'].max())
-        perc_selecionado = st.slider("% de Mulheres Vítimas", min_value=min_perc, max_value=max_perc, value=(min_perc, max_perc))
+        perc_selecionado = st.slider("% de Mulheres Vítimas", min_value=min_perc, max_value=max_perc, value=(min_perc, max_perc), key="perc_selecionado_slider")
 
         st.sidebar.markdown("---")
         
@@ -230,7 +238,16 @@ if not st.session_state.df_geral.empty:
         )
 
         if st.sidebar.button("🔄 Resetar Todos os Filtros", use_container_width=True):
-            st.session_state.clear()
+            keys_to_reset = [
+                "agrupamento_selecionado_widget", "data_inicial_widget", "data_final_widget",
+                "todos_municipios_check", "municipio_selecionado_multi", "mesoregiao_selecionado_multi",
+                "associacao_selecionado_multi", "todos_crimes_check", "fato_selecionado_multi",
+                "idade_selecionada_slider", "pop_selecionada_slider", "media_fatos_selecionada_slider",
+                "taxa_selecionada_slider", "perc_selecionado_slider"
+            ]
+            for key in keys_to_reset:
+                if key in st.session_state:
+                    del st.session_state[key]
             st.rerun()
 
     # --- LÓGICA DE FILTRAGEM FINAL ATUALIZADA ---
