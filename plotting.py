@@ -527,11 +527,23 @@ def plot_efetividade_denuncia(df_efetividade):
     fig = px.scatter(df_efetividade, x='taxa_crimes_leves', y='taxa_crimes_graves', hover_name='municipio',
                      hover_data={'total_crimes_leves': ':.0f', 'total_crimes_graves': ':.0f',
                                  'populacao_feminina': ':.0f', 'municipio': False},
-                     trendline="ols",
                      labels={'taxa_crimes_leves': 'Taxa de Crimes Leves (por 1.000 mulheres)',
                              'taxa_crimes_graves': 'Taxa de Crimes Graves (por 1.000 mulheres)'},
                      title="Efetividade da Denúncia: Crimes Leves vs. Graves por Município")
     fig.update_traces(marker=dict(size=10, opacity=0.7, color='#8e24aa'))
+
+    # Linha de tendência manual (sem statsmodels)
+    import numpy as np
+    x = df_efetividade['taxa_crimes_leves'].dropna().values
+    y = df_efetividade['taxa_crimes_graves'].dropna().values
+    if len(x) > 1 and len(x) == len(y):
+        coeffs = np.polyfit(x, y, 1)
+        x_sorted = np.sort(x)
+        y_trend = np.polyval(coeffs, x_sorted)
+        fig.add_trace(go.Scatter(x=x_sorted, y=y_trend, mode='lines',
+                                 line=dict(dash='dash', color='rgba(142,36,170,0.5)', width=2),
+                                 name='Tendencia', showlegend=False))
+
     fig.update_layout(separators=",.")
     return fig
 
