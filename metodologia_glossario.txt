@@ -170,5 +170,6 @@ Os crimes contra a honra são ferramentas comuns da violência psicológica, usa
     <p style='font-size: 1.1rem; color: #555; margin-top: 0.8rem;'>A ligação é gratuita e o serviço funciona 24 horas por dia.</p>
     <hr style='margin: 1rem auto; width: 80%; border: 1px solid #d1c4e9;'>
     <p style='color: #666; font-size: 1rem; margin: 0;'><strong>Emergências:</strong> Disque 190 - Polícia Militar</p>
-    <p style='color: #666; font-size: 1rem; margin-top: 0.3rem;'><strong>Denúncias:</strong> Disque 197 - Polícia Civil | 100 - Direitos Humanos</p>
+    <p style='color: #666; font-size: 1rem; margin-top: 0.3rem;'><strong>Denúncias:</strong> Disque 181 - Polícia Civil | 100 - Direitos Humanos</p>
+
 </div>
