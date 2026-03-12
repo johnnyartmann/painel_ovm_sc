@@ -9,23 +9,11 @@ def render():
     with col1:
         st.subheader("Base Geral de Crimes")
         st.markdown("Registros de violência contra a mulher (exceto feminicídios).")
-        try:
-            with open("data/base_geral.xlsx", "rb") as fp:
-                st.download_button(label="Download (XLSX)", data=fp, file_name="base_geral.xlsx",
-                                   mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                   key="download_geral")
-        except FileNotFoundError:
-            st.warning("Arquivo 'base_geral.xlsx' não encontrado.")
+        st.info("Download indisponível devido à Lei Geral de Proteção de Dados (LGPD).")
     with col2:
         st.subheader("Base de Feminicídios")
         st.markdown("Registros detalhados de feminicídios consumados.")
-        try:
-            with open("data/base_feminicidio.xlsx", "rb") as fp:
-                st.download_button(label="Download (XLSX)", data=fp, file_name="base_feminicidio.xlsx",
-                                   mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                   key="download_feminicidio")
-        except FileNotFoundError:
-            st.warning("Arquivo 'base_feminicidio.xlsx' não encontrado.")
+        st.info("Download indisponível devido à Lei Geral de Proteção de Dados (LGPD).")
     with col3:
         st.subheader("Base Populacional")
         st.markdown("Dados da população feminina por município.")
