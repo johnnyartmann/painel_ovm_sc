@@ -10,4 +10,3 @@ python-dateutil==2.9.0.post0
 fpdf2==2.8.3
 kaleido==0.2.1
 Pillow==11.2.1
-statsmodels==0.14.4
