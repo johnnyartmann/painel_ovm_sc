@@ -392,7 +392,7 @@ def render():
     st.plotly_chart(fig_mapa, use_container_width=True, key="mapa_geral")
     st.markdown("---")
 
-    st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+
     st.subheader("Série Histórica de Ocorrências")
     chart_type_temporal = st.selectbox("Tipo de Gráfico", ("Linha", "Área", "Barras"), key="chart_type_temporal")
     df_temporal = st.session_state.df_geral_filtrado.copy()
@@ -413,7 +413,7 @@ def render():
     st.plotly_chart(fig_temporal, use_container_width=True, key="temporal_geral")
     st.markdown("---")
 
-    st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+
     st.subheader("Distribuição de Ocorrências por Dia da Semana")
     chart_type_dia_semana = st.selectbox("Tipo de Gráfico", ("Barras", "Pizza", "Linha", "Área"),
                                          key="chart_type_dia_semana")
@@ -434,7 +434,7 @@ def render():
 
     col_graf1, col_graf2 = st.columns(2)
     with col_graf1:
-        st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+    
         st.subheader("Registros de Ocorrências por Ano")
         chart_type_ano = st.selectbox("Tipo de Gráfico", ("Barras", "Pizza", "Linha", "Área"), key="chart_type_ano")
 
@@ -460,7 +460,7 @@ def render():
         st.plotly_chart(fig_ano, use_container_width=True, key="ano_geral")
 
     with col_graf2:
-        st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+    
         st.subheader("Distribuição de Ocorrências por Mês")
         chart_type_mes = st.selectbox("Tipo de Gráfico", ("Pizza", "Barras", "Linha", "Área"), key="chart_type_mes")
         meses_ordem = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September',
@@ -481,7 +481,7 @@ def render():
 
     col_graf3, col_graf4 = st.columns(2)
     with col_graf3:
-        st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+    
         st.subheader("Distribuição por Faixa Etária da Vítima")
         chart_type_faixa_etaria = st.selectbox("Tipo de Gráfico", ("Barras", "Pizza", "Linha", "Área"), key="chart_type_faixa_etaria")
         df_faixa_etaria = st.session_state.df_geral_filtrado.dropna(subset=['idade_vitima'])
@@ -497,7 +497,7 @@ def render():
         st.plotly_chart(fig_faixa_etaria, use_container_width=True, key="faixa_etaria_geral")
 
     with col_graf4:
-        st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+    
         st.subheader("Natureza das Ocorrências Mais Frequentes")
         chart_type_fato = st.selectbox("Tipo de Gráfico", ("Barras", "Pizza"), key="chart_type_fato")
         if st.session_state.agrupamento_selecionado == "Consolidado":
@@ -519,7 +519,7 @@ def render():
     st.markdown("---")
 
     if st.session_state.agrupamento_selecionado != "Consolidado":
-        st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+    
         mapa_agrupamento_tabela = {"Município": "municipio", "Mesorregião": "mesoregiao", "Associação": "associacao"}
         coluna_agrupamento_tabela = mapa_agrupamento_tabela[st.session_state.agrupamento_selecionado]
         st.subheader(f"Tabela Consolidada de Ocorrências por {st.session_state.agrupamento_selecionado}")
@@ -583,7 +583,7 @@ def render():
         else:
             st.warning("Não há dados para exibir na tabela consolidada com os filtros selecionados.")
     else:
-        st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+    
         st.subheader("Tabela Consolidada de Ocorrências (Total SC)")
         with st.expander("Como interpretar esta tabela?"):
             st.info(
@@ -643,7 +643,7 @@ def render():
 
     st.markdown("---")
 
-    st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+
     st.subheader("Taxa de Ocorrências por População Feminina ")
     with st.expander("Como interpretar esta tabela?"):
         st.info(
@@ -688,7 +688,7 @@ def render():
 
     st.markdown("---")
 
-    st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+
     st.header("Análise de Vulnerabilidade por Faixa Etária e Tipo de Crime")
 
     st.subheader("Visualização da Distribuição de Crimes por Faixa Etária")
@@ -721,7 +721,7 @@ def render():
 
     st.markdown("---")
 
-    st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+
     st.subheader("Análise de Concentração: Heatmap de Crimes por Faixa Etária")
     st.markdown(
         "O heatmap abaixo mostra a concentração de tipos de crime em cada faixa etária. A cor mais forte identifica a faixa etária com maior incidência daquele crime específico.")
@@ -743,7 +743,7 @@ def render():
     
     st.markdown("---")
 
-    st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+
     st.header("Índice de Efetividade da Denúncia")
     st.markdown("""
     **Em um município, um alto número de denúncias de crimes "menores" (como ameaça) está correlacionado a um menor número de crimes graves (lesão corporal, feminicídio)? Ou seja, a denúncia está funcionando como um mecanismo de prevenção eficaz?** Este é um proxy para medir a efetividade da resposta do sistema de segurança e apoio. Um sistema eficaz deveria intervir após a primeira denúncia, impedindo a escalada da violência.
@@ -798,7 +798,7 @@ def render():
     
     st.markdown("---")
 
-    st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+
     st.header("Sazonalidade e Eventos-Chave: O Calendário do Risco")
     st.markdown("""
     A violência contra a mulher aumenta de forma previsível em torno de datas ou eventos específicos (feriados, fins de semana prolongados, períodos de férias)?
@@ -867,7 +867,7 @@ def render():
         
         st.markdown("---")
         
-        st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+    
         st.subheader("Ocorrências por Feriado Específico")
         st.markdown("Identifica quais feriados possuem o maior número absoluto de registros.")
         
@@ -880,7 +880,7 @@ def render():
                 fig_feriados = plot_barras_feriados(contagem_feriados)
                 st.plotly_chart(fig_feriados, use_container_width=True, key="barras_feriados")
                 
-                st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+            
                 st.markdown("#### 🔎 Detalhar Tipo de Crime por Feriado")
                 st.markdown("Selecione um feriado abaixo para ver quais tipos de crime são mais frequentes nesta data específica.")
                 
@@ -932,7 +932,7 @@ def render():
         
         st.markdown("---")
 
-        st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+    
         st.subheader("Heatmap de Risco: Dia da Semana vs. Mês")
         st.markdown("A cor de cada célula representa a quantidade média de crimes, destacando os períodos mais 'quentes' do ano.")
         df_periodo_completo_hm = pd.DataFrame(
