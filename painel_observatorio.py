@@ -1,6 +1,6 @@
 import pandas as pd
 import streamlit as st
-import streamlit.components.v1 as components
+from datetime import datetime
 from data_loader import carregar_dados_processados
 from tabs import analise_geral
 from tabs import analise_feminicidios
@@ -208,39 +208,22 @@ if not st.session_state.df_geral.empty:
 
         st.sidebar.markdown("---")
         
-        # Botão de Impressão via JS
-        components.html(
-            """
-            <script>
-            function printPage() {
-                window.parent.window.print();
-            }
-            </script>
-            <style>
-            .print-btn {
-                display: block;
-                width: 100%;
-                background: linear-gradient(135deg, #8e24aa 0%, #ab47bc 100%);
-                color: white;
-                border: none;
-                border-radius: 8px;
-                padding: 0.6rem 1rem;
-                font-weight: 600;
-                font-family: 'Inter', sans-serif;
-                cursor: pointer;
-                text-align: center;
-                transition: all 0.3s ease;
-                box-shadow: 0 4px 6px rgba(142, 36, 170, 0.3);
-            }
-            .print-btn:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 6px 12px rgba(142, 36, 170, 0.4);
-            }
-            </style>
-            <button class="print-btn" onclick="printPage()">🖨️ Imprimir / Salvar PDF</button>
-            """,
-            height=60
-        )
+        # Botão de Gerar Relatório PDF
+        if st.sidebar.button("📥 Gerar Relatório PDF", use_container_width=True, type="primary"):
+            with st.spinner("⏳ Gerando relatório PDF... Isso pode levar alguns segundos."):
+                from tabs.relatorio_pdf import gerar_relatorio_pdf
+                pdf_bytes = gerar_relatorio_pdf()
+                st.session_state['pdf_bytes'] = pdf_bytes
+                st.session_state['pdf_ready'] = True
+        
+        if st.session_state.get('pdf_ready', False):
+            st.sidebar.download_button(
+                label="💾 Baixar Relatório PDF",
+                data=st.session_state['pdf_bytes'],
+                file_name=f"relatorio_ovm_sc_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )
 
         if st.sidebar.button("🔄 Resetar Todos os Filtros", use_container_width=True):
             st.session_state.reset_counter += 1
