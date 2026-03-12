@@ -450,11 +450,13 @@ def gerar_relatorio_pdf():
     pdf.cell(0, 8, f'Total de registros (geral): {len(df_geral):,}'.replace(',', '.'), align='C', ln=True)
     pdf.cell(0, 8, f'Total de feminicidios: {len(df_feminicidio):,}'.replace(',', '.'), align='C', ln=True)
 
-    # Data de geração
+    # Data de geracao (desabilitar auto page break para não criar página em branco)
+    pdf.set_auto_page_break(auto=False)
     pdf.set_y(pdf.h - 25)
     pdf.set_font('Helvetica', 'I', 9)
     pdf.set_text_color(180, 160, 200)
-    pdf.cell(0, 8, f'Relatorio gerado em {datetime.now().strftime("%d/%m/%Y as %H:%M")}', align='C', ln=True)
+    pdf.cell(0, 8, f'Relatorio gerado em {datetime.now().strftime("%d/%m/%Y as %H:%M")}', align='C')
+    pdf.set_auto_page_break(auto=True, margin=20)
 
     # =====================================================================
     # SEÇÃO 1: RESUMO EXECUTIVO - ANÁLISE GERAL
