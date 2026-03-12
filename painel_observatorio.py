@@ -208,22 +208,27 @@ if not st.session_state.df_geral.empty:
 
         st.sidebar.markdown("---")
         
-        # Botão de Gerar Relatório PDF
+        # Botão de Gerar Relatório PDF (download automático)
         if st.sidebar.button("📥 Gerar Relatório PDF", use_container_width=True, type="primary"):
             with st.spinner("⏳ Gerando relatório PDF... Isso pode levar alguns segundos."):
                 from tabs.relatorio_pdf import gerar_relatorio_pdf
+                import base64
                 pdf_bytes = gerar_relatorio_pdf()
-                st.session_state['pdf_bytes'] = pdf_bytes
-                st.session_state['pdf_ready'] = True
-        
-        if st.session_state.get('pdf_ready', False):
-            st.sidebar.download_button(
-                label="💾 Baixar Relatório PDF",
-                data=st.session_state['pdf_bytes'],
-                file_name=f"relatorio_ovm_sc_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
-                mime="application/pdf",
-                use_container_width=True,
-            )
+                b64 = base64.b64encode(pdf_bytes).decode()
+                file_name = f"relatorio_ovm_sc_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+                # Download automático via JavaScript
+                download_js = f'''
+                    <script>
+                        var link = document.createElement('a');
+                        link.href = 'data:application/pdf;base64,{b64}';
+                        link.download = '{file_name}';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    </script>
+                '''
+                st.components.v1.html(download_js, height=0)
+                st.sidebar.success("✅ Relatório gerado com sucesso!")
 
         if st.sidebar.button("🔄 Resetar Todos os Filtros", use_container_width=True):
             st.session_state.reset_counter += 1
