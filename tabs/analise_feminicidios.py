@@ -241,7 +241,7 @@ def render():
 
     st.markdown("---")
 
-    st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+
     st.subheader(f"Distribuição Geográfica dos Feminicídios por {st.session_state.agrupamento_selecionado}")
     with st.expander("Como interpretar este mapa?"):
         st.info(
@@ -286,7 +286,7 @@ def render():
     st.plotly_chart(fig_mapa_fem, use_container_width=True, key="mapa_fem")
     st.markdown("---")
 
-    st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+
     st.subheader("Quantidade de Feminicídios por Mês/Ano")
     chart_type_fem_mes_ano = st.selectbox("Tipo de Gráfico", ("Barras", "Linha", "Área"), key="chart_type_fem_mes_ano")
     st.session_state.df_feminicidio_filtrado['ano_mes'] = st.session_state.df_feminicidio_filtrado[
@@ -312,7 +312,7 @@ def render():
     col_ano, col_local = st.columns(2)
 
     with col_ano:
-        st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+    
         st.subheader("Quantidade de Feminicídios por Ano")
         chart_type_fem_ano = st.selectbox("Tipo de Gráfico", ("Barras", "Linha", "Área"), key="chart_type_fem_ano")
 
@@ -339,7 +339,7 @@ def render():
         st.plotly_chart(fig_ano_fem, use_container_width=True, key="ano_fem")
 
     with col_local:
-        st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+    
         st.subheader("Localidade do Crime")
         chart_type_localidade = st.selectbox("Tipo de Gráfico", ("Barras", "Pizza"), key="chart_type_localidade")
         if st.session_state.agrupamento_selecionado == "Consolidado":
@@ -362,7 +362,7 @@ def render():
 
     col_graf_fem1, col_graf_fem2 = st.columns(2)
     with col_graf_fem1:
-        st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+    
         st.subheader("Vínculo entre o Autor e a Vítima")
         chart_type_vinculo = st.selectbox("Tipo de Gráfico", ("Barras", "Pizza"), key="chart_type_vinculo")
         if st.session_state.agrupamento_selecionado == "Consolidado":
@@ -381,7 +381,7 @@ def render():
         st.plotly_chart(fig_vinculo, use_container_width=True, key="vinculo_fem")
 
     with col_graf_fem2:
-        st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+    
         st.subheader("Vítima registrou Boletim de Ocorrência por violência doméstica contra o Autor?")
         chart_type_bo = st.selectbox("Tipo de Gráfico", ("Pizza", "Barras"), key="chart_type_bo")
         bo_contra_autor = st.session_state.df_feminicidio_filtrado[
@@ -394,7 +394,7 @@ def render():
 
     col_graf_fem3, col_graf_fem4 = st.columns(2)
     with col_graf_fem3:
-        st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+    
         st.subheader("Distribuição de Idade da Vítima")
         chart_type_idade_vitima = st.selectbox("Tipo de Gráfico", ("Histograma", "Gráfico de Densidade"),
                                                key="chart_type_idade_vitima")
@@ -405,7 +405,7 @@ def render():
         st.plotly_chart(fig_idade_vitima, use_container_width=True, key="idade_vitima_fem")
 
     with col_graf_fem4:
-        st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+    
         st.subheader("Distribuição de Idade do Autor")
         chart_type_idade_autor = st.selectbox("Tipo de Gráfico", ("Histograma", "Gráfico de Densidade"),
                                               key="chart_type_idade_autor")
@@ -441,7 +441,7 @@ def render():
     st.markdown("---")
 
     # --- NOVA SEÇÃO: CONTEXTO DO RELACIONAMENTO E FAMILIAR ---
-    st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+
     st.subheader("Contexto do Relacionamento e Familiar")
     
     col_tempo, col_filhos = st.columns(2)
@@ -484,7 +484,7 @@ def render():
             
     st.markdown("---")
     
-    st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+
     st.subheader("Raio-X do Agressor")
     col_raiox1, col_raiox2 = st.columns(2)
     with col_raiox1:
@@ -503,7 +503,7 @@ def render():
         else:
             st.info("Não há dados suficientes para exibir o gráfico de correlação de idades.")
     with col_raiox2:
-        st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+    
         st.subheader("Histórico do Agressor")
         with st.expander("Como interpretar este gráfico?"):
             st.info("""
@@ -521,7 +521,7 @@ def render():
                 "Não há dados suficientes ou as colunas necessárias não existem para exibir o gráfico de histórico do agressor.")
     st.markdown("---")
 
-    st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+
     st.subheader("Análise Cruzada de Vítima e Agressor")
     with st.expander("Como interpretar este gráfico?"):
         st.info(
@@ -543,7 +543,7 @@ def render():
 
     col_graf_fem5, col_graf_fem6 = st.columns(2)
     with col_graf_fem5:
-        st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+    
         st.subheader("Meio Utilizado para o Crime")
         chart_type_meio = st.selectbox("Tipo de Gráfico", ("Barras", "Pizza"), key="chart_type_meio")
         if st.session_state.agrupamento_selecionado == "Consolidado":
@@ -562,7 +562,7 @@ def render():
         st.plotly_chart(fig_meio, use_container_width=True, key="meio_fem")
 
     with col_graf_fem6:
-        st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+    
         st.subheader("Autor Foi Preso?")
         chart_type_preso = st.selectbox("Tipo de Gráfico", ("Pizza", "Barras"), key="chart_type_preso")
         autor_preso = st.session_state.df_feminicidio_filtrado['autor_preso'].value_counts().reset_index()
@@ -576,7 +576,7 @@ def render():
 
     col_graf_fem9, col_graf_fem10 = st.columns(2)
     with col_graf_fem9:
-        st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+    
         st.subheader("Tipo de Local")
         
         if 'tipo_local' in st.session_state.df_feminicidio_filtrado.columns:
@@ -593,7 +593,7 @@ def render():
 
     col_graf_fem7, col_graf_fem8 = st.columns(2)
     with col_graf_fem7:
-        st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+    
         st.subheader("Autor possuia registro de Boletim de Ocorrência por qualquer tipo de crime?")
         chart_type_autor_bo = st.selectbox("Tipo de Gráfico", ("Pizza", "Barras"), key="chart_type_autor_bo")
         autor_bo = st.session_state.df_feminicidio_filtrado['passagem_policial'].value_counts().reset_index()
@@ -604,7 +604,7 @@ def render():
         st.plotly_chart(fig_autor_bo, use_container_width=True, key="autor_bo_fem")
 
     with col_graf_fem8:
-        st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+    
         st.subheader("Autor possuia registro de Boletim de Ocorrência por Violência Doméstica?")
         if 'passagem_por_violencia_domestica' in st.session_state.df_feminicidio_filtrado.columns:
             chart_type_autor_bo_vd = st.selectbox("Tipo de Gráfico", ("Pizza", "Barras"),
@@ -689,7 +689,7 @@ def render():
             st.warning("Não há dados para exibir na tabela de feminicídios com os filtros selecionados.")
 
     else:
-        st.markdown('<div class="pdf-break"></div>', unsafe_allow_html=True)
+    
         st.subheader("Tabela Consolidada de Feminicídios (Total SC)")
         if not st.session_state.df_feminicidio_filtrado.empty:
             tabela_total = criar_tabela_total_feminicidio(st.session_state.df_feminicidio_filtrado,
