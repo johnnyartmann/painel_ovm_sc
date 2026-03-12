@@ -407,8 +407,10 @@ def gerar_relatorio_pdf():
     pdf.add_page()
 
     # =====================================================================
-    # CAPA
+    # CAPA (desabilitar auto page break para evitar páginas em branco)
     # =====================================================================
+    pdf.set_auto_page_break(auto=False)
+
     # Fundo roxo na capa inteira
     pdf.set_fill_color(*ROXO_ESCURO)
     pdf.rect(0, 0, pdf.w, pdf.h, 'F')
@@ -446,20 +448,20 @@ def gerar_relatorio_pdf():
     pdf.set_text_color(*BRANCO)
     pdf.cell(0, 8, periodo_texto, align='C', ln=True)
     pdf.cell(0, 8, f'Agrupamento: {agrupamento}', align='C', ln=True)
-
     pdf.cell(0, 8, f'Total de registros (geral): {len(df_geral):,}'.replace(',', '.'), align='C', ln=True)
     pdf.cell(0, 8, f'Total de feminicidios: {len(df_feminicidio):,}'.replace(',', '.'), align='C', ln=True)
 
-    # Data de geracao (desabilitar auto page break para não criar página em branco)
-    pdf.set_auto_page_break(auto=False)
+    # Data de geracao
     pdf.set_y(pdf.h - 25)
     pdf.set_font('Helvetica', 'I', 9)
     pdf.set_text_color(180, 160, 200)
     pdf.cell(0, 8, f'Relatorio gerado em {datetime.now().strftime("%d/%m/%Y as %H:%M")}', align='C')
+
+    # Reabilitar auto page break para o restante do relatório
     pdf.set_auto_page_break(auto=True, margin=20)
 
     # =====================================================================
-    # SEÇÃO 1: RESUMO EXECUTIVO - ANÁLISE GERAL
+    # SECAO 1: RESUMO EXECUTIVO - ANALISE GERAL
     # =====================================================================
     pdf.add_page()
     _add_section_title(pdf, "Resumo Executivo -- Analise Geral")
