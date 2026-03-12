@@ -369,65 +369,6 @@ def render_custom_header():
                 padding-top: 70px !important;
             }
         }
-    /* ESTILOS DE IMPRESSÃO (PDF) */
-        @media print {
-            /* 1. Resetar posicionamento fixo para STATIC */
-            .fixed-header, 
-            #header-tabs-container, 
-            .custom-info-cards-wrapper {
-                position: static !important;
-                display: flex !important;
-                visibility: visible !important;
-                box-shadow: none !important;
-                border: none !important;
-                width: 100% !important;
-                max-width: 100% !important;
-                margin: 0 !important;
-                padding: 1rem 0 !important;
-                background: white !important; /* Garantir fundo branco */
-            }
-
-            /* Esconder elementos que não fazem sentido na impressão */
-            .header-expander {
-                display: none !important;
-            }
-
-            /* 2. Forçar QUEBRA DE PÁGINA após o header completo */
-            /* Criamos uma classe utilitária que será injetada no fim do header */
-            .header-print-break {
-                display: block !important;
-                page-break-after: always !important;
-                height: 1px;
-                width: 100%;
-                margin-bottom: 2rem;
-            }
-            
-            /* Ajustes visuais para os cards na impressão */
-            .info-container {
-                width: 100% !important;
-                justify-content: center !important;
-                flex-wrap: wrap !important;
-                gap: 1rem !important;
-            }
-
-            .info-card {
-                border: 1px solid #ddd !important;
-                box-shadow: none !important;
-            }
-
-            /* Grantir que o conteúdo não fique deslocado verticalmente */
-            .main .block-container {
-                padding-top: 0px !important;
-                margin-top: 0px !important;
-            }
-
-            /* Garantir que os botões (agora apenas texto visual) apareçam bem */
-            #header-tabs-container button {
-                border: 1px solid #ccc !important;
-                background: #f9f9f9 !important;
-                color: #333 !important;
-            }
-        }
     </style>
     """
 
@@ -577,7 +518,6 @@ def render_custom_header():
 <div class="custom-info-cards-wrapper" style="position: fixed; top: 70px; left: 0; width: 100vw; z-index: 999998;">
 {info_html}
 </div>
-<div class="header-print-break"></div>
 ''', unsafe_allow_html=True)
 
 
