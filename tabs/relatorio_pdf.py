@@ -88,7 +88,7 @@ class RelatorioPDF(FPDF):
         self.set_font('Helvetica', 'B', 8)
         self.set_text_color(*BRANCO)
         self.set_xy(18, 2)
-        self.cell(0, 5, 'Observatório da Violência Contra a Mulher - SC', align='L')
+        self.cell(0, 5, 'Observatorio da Violencia Contra a Mulher - SC', align='L')
 
         # Período
         self.set_font('Helvetica', '', 7)
@@ -114,7 +114,7 @@ class RelatorioPDF(FPDF):
 
         # Data de geração à direita
         self.set_y(-12)
-        data_geracao = datetime.now().strftime('%d/%m/%Y às %H:%M')
+        data_geracao = datetime.now().strftime('%d/%m/%Y as %H:%M')
         self.cell(0, 10, f'Gerado em {data_geracao}', align='R')
 
 
@@ -169,7 +169,7 @@ def _add_image_to_pdf(pdf, img_bytes, w=260):
             pass
 
 
-def _add_section_title(pdf, titulo, icone=""):
+def _add_section_title(pdf, titulo):
     """Adiciona um título de seção estilizado."""
     espaco_restante = pdf.h - pdf.get_y() - 20
     if espaco_restante < 30:
@@ -177,8 +177,7 @@ def _add_section_title(pdf, titulo, icone=""):
 
     pdf.set_font('Helvetica', 'B', 14)
     pdf.set_text_color(*ROXO_ESCURO)
-    texto = f"{icone}  {titulo}" if icone else titulo
-    pdf.cell(0, 10, texto, ln=True)
+    pdf.cell(0, 10, titulo, ln=True)
 
     # Linha decorativa roxa
     y = pdf.get_y()
@@ -218,7 +217,7 @@ def _add_dataframe_table(pdf, df, col_widths=None, title=None, max_rows=80):
     if df is None or df.empty:
         pdf.set_font('Helvetica', 'I', 9)
         pdf.set_text_color(150, 150, 150)
-        pdf.cell(0, 8, 'Nenhum dado disponível para exibir.', ln=True)
+        pdf.cell(0, 8, 'Nenhum dado disponivel para exibir.', ln=True)
         return
 
     if title:
@@ -326,6 +325,7 @@ def _add_dataframe_table(pdf, df, col_widths=None, title=None, max_rows=80):
         pdf.set_font('Helvetica', 'I', 7)
         pdf.set_text_color(150, 150, 150)
         pdf.cell(0, 5, f'* Exibindo as primeiras {max_rows} de {len(df)} linhas.', ln=True)
+
         pdf.ln(3)
 
 
@@ -393,9 +393,9 @@ def gerar_relatorio_pdf():
 
     # Texto do período
     if data_inicial and data_final:
-        periodo_texto = f"Período: {data_inicial.strftime('%d/%m/%Y')} a {data_final.strftime('%d/%m/%Y')}"
+        periodo_texto = f"Periodo: {data_inicial.strftime('%d/%m/%Y')} a {data_final.strftime('%d/%m/%Y')}"
     else:
-        periodo_texto = "Período: Todos os dados disponíveis"
+        periodo_texto = "Periodo: Todos os dados disponiveis"
 
     # Logo
     logo_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'logo_ovm.png')
@@ -423,8 +423,8 @@ def gerar_relatorio_pdf():
     pdf.set_font('Helvetica', 'B', 28)
     pdf.set_text_color(*BRANCO)
     pdf.set_y(105)
-    pdf.cell(0, 15, 'Relatório do Observatório da', align='C', ln=True)
-    pdf.cell(0, 15, 'Violência Contra a Mulher', align='C', ln=True)
+    pdf.cell(0, 15, 'Relatorio do Observatorio da', align='C', ln=True)
+    pdf.cell(0, 15, 'Violencia Contra a Mulher', align='C', ln=True)
 
     # Subtítulo
     pdf.set_font('Helvetica', '', 16)
@@ -446,20 +446,21 @@ def gerar_relatorio_pdf():
     pdf.set_text_color(*BRANCO)
     pdf.cell(0, 8, periodo_texto, align='C', ln=True)
     pdf.cell(0, 8, f'Agrupamento: {agrupamento}', align='C', ln=True)
+
     pdf.cell(0, 8, f'Total de registros (geral): {len(df_geral):,}'.replace(',', '.'), align='C', ln=True)
-    pdf.cell(0, 8, f'Total de feminicídios: {len(df_feminicidio):,}'.replace(',', '.'), align='C', ln=True)
+    pdf.cell(0, 8, f'Total de feminicidios: {len(df_feminicidio):,}'.replace(',', '.'), align='C', ln=True)
 
     # Data de geração
     pdf.set_y(pdf.h - 25)
     pdf.set_font('Helvetica', 'I', 9)
     pdf.set_text_color(180, 160, 200)
-    pdf.cell(0, 8, f'Relatório gerado em {datetime.now().strftime("%d/%m/%Y às %H:%M")}', align='C', ln=True)
+    pdf.cell(0, 8, f'Relatorio gerado em {datetime.now().strftime("%d/%m/%Y as %H:%M")}', align='C', ln=True)
 
     # =====================================================================
     # SEÇÃO 1: RESUMO EXECUTIVO - ANÁLISE GERAL
     # =====================================================================
     pdf.add_page()
-    _add_section_title(pdf, "Resumo Executivo — Análise Geral", "📊")
+    _add_section_title(pdf, "Resumo Executivo -- Analise Geral")
 
     total_registros = len(df_geral)
     num_dias = (data_final - data_inicial).days + 1 if data_inicial and data_final else 1
@@ -476,21 +477,21 @@ def gerar_relatorio_pdf():
         pct_fds = (ocorr_fds / total_registros * 100) if total_registros > 0 else 0
 
     tendencia = calcular_tendencia_mensal(df_geral)
-    tend_texto = f"{tendencia:.1f}% ao ano" if pd.notna(tendencia) else "N/A"
+    tend_texto = f"{tendencia:.1f}% a.a." if pd.notna(tendencia) else "N/A"
 
     _add_kpi_cards(pdf, [
-        {'label': 'Total de Registros', 'value': f"{total_registros:,}".replace(',', '.')},
-        {'label': 'Média/Dia', 'value': f"{crimes_por_dia:.1f}"},
-        {'label': 'Média/Hora', 'value': f"{crimes_por_hora:.2f}"},
-        {'label': 'Tendência', 'value': tend_texto},
-        {'label': 'Idade Média Vítima', 'value': f"{media_idade:.1f} anos"},
-        {'label': '% Fins de Semana', 'value': f"{pct_fds:.1f}%"},
+        {'label': 'Total Registros', 'value': f"{total_registros:,}".replace(',', '.')},
+        {'label': 'Media/Dia', 'value': f"{crimes_por_dia:.1f}"},
+        {'label': 'Media/Hora', 'value': f"{crimes_por_hora:.2f}"},
+        {'label': 'Tendencia', 'value': tend_texto},
+        {'label': 'Idade Media Vitima', 'value': f"{media_idade:.1f} anos"},
+        {'label': 'Fins de Semana', 'value': f"{pct_fds:.1f}%"},
     ])
 
     # =====================================================================
     # SEÇÃO 2: GRÁFICOS DA ANÁLISE GERAL
     # =====================================================================
-    _add_section_title(pdf, "Série Histórica de Ocorrências", "📈")
+    _add_section_title(pdf, "Serie Historica de Ocorrencias")
 
     # Gráfico: Série temporal
     try:
@@ -514,7 +515,7 @@ def gerar_relatorio_pdf():
 
     # Gráfico: Por Ano
     pdf.add_page()
-    _add_section_title(pdf, "Ocorrências por Ano e por Mês", "📅")
+    _add_section_title(pdf, "Ocorrencias por Ano e por Mes")
 
     try:
         if not df_geral.empty:
@@ -564,7 +565,7 @@ def gerar_relatorio_pdf():
 
     # Gráfico: Dia da Semana
     pdf.add_page()
-    _add_section_title(pdf, "Distribuição por Dia da Semana e Faixa Etária", "👥")
+    _add_section_title(pdf, "Distribuicao por Dia da Semana e Faixa Etaria")
 
     try:
         if not df_geral.empty:
@@ -605,7 +606,7 @@ def gerar_relatorio_pdf():
 
     # Gráfico: Tipo de crime
     pdf.add_page()
-    _add_section_title(pdf, "Natureza das Ocorrências", "⚖️")
+    _add_section_title(pdf, "Natureza das Ocorrencias")
 
     try:
         if not df_geral.empty:
@@ -647,7 +648,7 @@ def gerar_relatorio_pdf():
     # SEÇÃO 3: TABELA CONSOLIDADA DE OCORRÊNCIAS
     # =====================================================================
     pdf.add_page()
-    _add_section_title(pdf, "Tabela Consolidada de Ocorrências", "📋")
+    _add_section_title(pdf, "Tabela Consolidada de Ocorrencias")
 
     try:
         if not df_geral.empty:
@@ -688,7 +689,7 @@ def gerar_relatorio_pdf():
     # SEÇÃO 4: TABELA DE TAXA POPULACIONAL
     # =====================================================================
     pdf.add_page()
-    _add_section_title(pdf, "Taxa de Ocorrências por População Feminina", "👩")
+    _add_section_title(pdf, "Taxa de Ocorrencias por Populacao Feminina")
 
     try:
         if not df_geral.empty and not df_populacao.empty:
@@ -713,7 +714,7 @@ def gerar_relatorio_pdf():
     # SEÇÃO 5: RESUMO EXECUTIVO - FEMINICÍDIOS
     # =====================================================================
     pdf.add_page()
-    _add_section_title(pdf, "Resumo Executivo — Análise de Feminicídios", "🚨")
+    _add_section_title(pdf, "Resumo Executivo -- Analise de Feminicidios")
 
     total_fem = len(df_feminicidio)
     if total_fem > 0:
@@ -730,20 +731,20 @@ def gerar_relatorio_pdf():
         pct_hist = (autores_hist / total_fem) * 100
 
         _add_kpi_cards(pdf, [
-            {'label': 'Total de Feminicídios', 'value': str(total_fem)},
-            {'label': '% Vítimas c/ BO Anterior', 'value': f"{pct_bo:.1f}%"},
-            {'label': '% Autores c/ Histórico VD', 'value': f"{pct_hist:.1f}%"},
+            {'label': 'Total de Feminicidios', 'value': str(total_fem)},
+            {'label': '% Vitimas c/ BO Anterior', 'value': f"{pct_bo:.1f}%"},
+            {'label': '% Autores c/ Historico VD', 'value': f"{pct_hist:.1f}%"},
         ])
     else:
         pdf.set_font('Helvetica', 'I', 10)
         pdf.set_text_color(150, 150, 150)
-        pdf.cell(0, 10, 'Nenhum dado de feminicídio encontrado para os filtros selecionados.', ln=True)
+        pdf.cell(0, 10, 'Nenhum dado de feminicidio encontrado para os filtros selecionados.', ln=True)
 
     # =====================================================================
     # SEÇÃO 6: GRÁFICOS DE FEMINICÍDIOS
     # =====================================================================
     if total_fem > 0:
-        _add_section_title(pdf, "Série Temporal de Feminicídios", "📈")
+        _add_section_title(pdf, "Serie Temporal de Feminicidios")
 
         # Gráfico: Série temporal feminicídios
         try:
@@ -767,7 +768,7 @@ def gerar_relatorio_pdf():
 
         # Gráfico: Feminicídios por ano
         pdf.add_page()
-        _add_section_title(pdf, "Feminicídios por Ano e Perfil", "📊")
+        _add_section_title(pdf, "Feminicidios por Ano e Perfil")
 
         try:
             ano_corrente = pd.Timestamp.now().year
@@ -811,7 +812,7 @@ def gerar_relatorio_pdf():
 
         # Gráfico: Meio do crime + Autor preso
         pdf.add_page()
-        _add_section_title(pdf, "Meio Utilizado e Situação do Autor", "🔍")
+        _add_section_title(pdf, "Meio Utilizado e Situacao do Autor")
 
         try:
             if agrupamento == "Consolidado":
@@ -843,7 +844,7 @@ def gerar_relatorio_pdf():
         try:
             bo = df_feminicidio['bo_de_vd_contra_o_autor'].value_counts().reset_index()
             bo.columns = ['Resposta', 'Quantidade']
-            _add_subsection_title(pdf, "Vítima possuía BO contra o autor?")
+            _add_subsection_title(pdf, "Vitima possuia BO contra o autor?")
             fig_bo = plot_bo_contra_autor(bo, "Barras")
             img = _fig_to_image(fig_bo, width=550, height=350)
             _add_image_to_pdf(pdf, img, w=130)
@@ -854,7 +855,7 @@ def gerar_relatorio_pdf():
     # SEÇÃO 7: TABELA CONSOLIDADA DE FEMINICÍDIOS
     # =====================================================================
     pdf.add_page()
-    _add_section_title(pdf, "Tabela Consolidada de Feminicídios", "📋")
+    _add_section_title(pdf, "Tabela Consolidada de Feminicidios")
 
     try:
         if not df_feminicidio.empty:
@@ -895,13 +896,13 @@ def gerar_relatorio_pdf():
     # =====================================================================
     if agrupamento != "Consolidado" and not df_geral.empty and not df_feminicidio.empty:
         pdf.add_page()
-        _add_section_title(pdf, "Índice de Letalidade da Violência", "⚠️")
+        _add_section_title(pdf, "Indice de Letalidade da Violencia")
 
         pdf.set_font('Helvetica', '', 9)
         pdf.set_text_color(*CINZA_TEXTO)
         pdf.multi_cell(0, 5,
-            'O índice representa: "Para cada 100 ocorrências de violência contra a mulher, X resultaram em morte." '
-            'Um índice alto, mesmo com poucas ocorrências, é sinal de alerta sobre falhas na rede de proteção.'
+            'O indice representa: "Para cada 100 ocorrencias de violencia contra a mulher, '
+            'X resultaram em morte." Um indice alto, mesmo com poucas ocorrencias, e sinal de alerta.'
         )
         pdf.ln(5)
 
@@ -913,7 +914,7 @@ def gerar_relatorio_pdf():
                     'total_eventos': 'Total Eventos',
                     'total_ocorrencias': 'Ocorrências',
                     'total_feminicidios': 'Feminicídios',
-                    'indice_letalidade': 'Índ. Letalidade'
+                    'indice_letalidade': 'Ind. Letalidade'
                 })
 
                 n_cols = len(df_ranking.columns)
