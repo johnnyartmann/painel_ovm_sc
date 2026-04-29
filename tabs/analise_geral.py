@@ -207,6 +207,13 @@ def criar_tabela_populacional_agrupada(df_crimes, df_pop, df_regioes, agrupament
          '% de Mulheres Vítimas (anual)']].set_index(agrupamento)
 
 def render():
+    from data_loader import carregar_dados_processados
+    dfs, geojson_sc = carregar_dados_processados()
+    df_geral = dfs.get('geral', pd.DataFrame())
+    df_feminicidio = dfs.get('feminicidio', pd.DataFrame())
+    df_populacao = dfs.get('populacao', pd.DataFrame())
+    df_regioes = dfs.get('regioes', pd.DataFrame())
+    df_calendario = dfs.get('calendario', pd.DataFrame())
     st.header("Violência contra a Mulher em Santa Catarina")
     st.markdown(
         "Visão geral dos registros de ocorrências de violência com a mulher no âmbito doméstico (Lei Maria da Penha), no Estado de Santa Catarina.")
@@ -320,7 +327,7 @@ def render():
     base_map_df.columns = ['municipio_normalizado', 'total_fatos']
 
     if view_type != "Soma dos Crimes":
-        base_map_df = pd.merge(base_map_df, st.session_state.df_populacao, on='municipio_normalizado', how='left')
+        base_map_df = pd.merge(base_map_df, df_populacao, on='municipio_normalizado', how='left')
         base_map_df.dropna(subset=['populacao_feminina'], inplace=True)
         anos_no_filtro = st.session_state.df_geral_filtrado['ano'].unique()
         num_anos = len(anos_no_filtro) if len(anos_no_filtro) > 0 else 1
@@ -339,7 +346,7 @@ def render():
         base_map_df.rename(columns={'total_fatos': color_col}, inplace=True)
 
     # --- LÓGICA DO MAPA COM MERGE DE REGIÕES ---
-    cols_regiao = st.session_state.df_regioes[['municipio_normalizado', 'mesoregiao', 'associacao']]
+    cols_regiao = df_regioes[['municipio_normalizado', 'mesoregiao', 'associacao']]
 
     if st.session_state.agrupamento_selecionado == "Município" or st.session_state.agrupamento_selecionado == "Consolidado":
         map_df = pd.merge(base_map_df, cols_regiao, on='municipio_normalizado', how='left')
@@ -387,7 +394,7 @@ def render():
         map_df = map_df[
             map_df['municipio_normalizado'].isin(st.session_state.df_geral_filtrado['municipio_normalizado'].unique())]
 
-    fig_mapa = plot_mapa_geral(map_df, st.session_state.geojson_sc, color_col, label_text,
+    fig_mapa = plot_mapa_geral(map_df, geojson_sc, color_col, label_text,
                                st.session_state.agrupamento_selecionado)
     st.plotly_chart(fig_mapa, use_container_width=True, key="mapa_geral")
     st.markdown("---")
@@ -656,8 +663,8 @@ def render():
     anos_no_filtro = st.session_state.df_geral_filtrado['ano'].unique()
     num_anos = len(anos_no_filtro) if len(anos_no_filtro) > 0 else 1
     tabela_populacional = criar_tabela_populacional_agrupada(st.session_state.df_geral_filtrado,
-                                                            st.session_state.df_populacao,
-                                                            st.session_state.df_regioes,
+                                                            df_populacao,
+                                                            df_regioes,
                                                             st.session_state.agrupamento_selecionado, num_anos)
 
     if not tabela_populacional.empty:
@@ -752,7 +759,7 @@ def render():
     crimes_leves = ["Ameaça", "Vias de Fato"]
     crimes_graves = ["Lesão corporal leve - Dolosa", "Lesão corporal grave ou gravíssima - Dolosa", "Estupro", "Feminicídio"]
 
-    if not st.session_state.df_geral_filtrado.empty and not st.session_state.df_populacao.empty:
+    if not st.session_state.df_geral_filtrado.empty and not df_populacao.empty:
         anos_no_filtro = st.session_state.df_geral_filtrado['ano'].unique()
         num_anos = len(anos_no_filtro) if len(anos_no_filtro) > 0 else 1
 
@@ -767,7 +774,7 @@ def render():
         df_efetividade = pd.merge(contagem_leves, contagem_graves, on='municipio_normalizado',
                                     how='outer').fillna(0)
         df_efetividade = pd.merge(df_efetividade,
-                                    st.session_state.df_populacao[
+                                    df_populacao[
                                         ['municipio_normalizado', 'municipio', 'populacao_feminina']],
                                     on='municipio_normalizado', how='left')
         
@@ -810,9 +817,9 @@ def render():
 
     if not df_geral_filtrado_sazonal.empty:
         df_geral_filtrado_sazonal['data_fato_date'] = df_geral_filtrado_sazonal['data_fato'].dt.date
-        st.session_state.df_calendario['data_fato_date'] = st.session_state.df_calendario['data'].dt.date
+        df_calendario['data_fato_date'] = df_calendario['data'].dt.date
         df_geral_filtrado_sazonal = pd.merge(df_geral_filtrado_sazonal,
-                                                st.session_state.df_calendario[
+                                                df_calendario[
                                                     ['data_fato_date', 'is_feriado', 'is_fim_de_semana',
                                                     'is_vespera_feriado', 'is_pos_feriado', 'nome_feriado']],
                                                 on='data_fato_date', how='left')
@@ -824,7 +831,7 @@ def render():
             columns=['data'])
         df_periodo_completo['data_fato_date'] = df_periodo_completo['data'].dt.date
         df_periodo_completo_com_eventos = pd.merge(df_periodo_completo,
-                                                    st.session_state.df_calendario[
+                                                    df_calendario[
                                                         ['data_fato_date', 'is_feriado', 'is_fim_de_semana',
                                                         'is_vespera_feriado', 'is_pos_feriado']],
                                                     on='data_fato_date', how='left').fillna(False)
