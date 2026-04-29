@@ -941,7 +941,7 @@ def render():
 
     
         st.subheader("Heatmap de Risco: Dia da Semana vs. Mês")
-        st.markdown("A cor de cada célula representa a quantidade média de crimes, destacando os períodos mais 'quentes' do ano.")
+        st.markdown("A cor de cada célula representa a quantidade média de crimes, destacando os períodos maior incidência do ano.")
         df_periodo_completo_hm = pd.DataFrame(
             pd.to_datetime(pd.date_range(start=st.session_state.data_inicial, end=st.session_state.data_final)),
             columns=['data_fato'])
