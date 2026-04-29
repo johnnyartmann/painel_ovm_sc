@@ -201,6 +201,13 @@ def calcular_indice_letalidade(df_geral_filtrado, df_feminicidio_filtrado, agrup
 
 
 def render():
+    from data_loader import carregar_dados_processados
+    dfs, geojson_sc = carregar_dados_processados()
+    df_geral = dfs.get('geral', pd.DataFrame())
+    df_feminicidio = dfs.get('feminicidio', pd.DataFrame())
+    df_populacao = dfs.get('populacao', pd.DataFrame())
+    df_regioes = dfs.get('regioes', pd.DataFrame())
+    df_calendario = dfs.get('calendario', pd.DataFrame())
     st.header("Análise de Feminicídios Consumados")
 
     # --- (BLOCOS INTELIGENTES DE CONTEXTO MOVIDOS PARA O HEADER) ---
@@ -252,7 +259,7 @@ def render():
         )
     
     # --- LÓGICA DO MAPA COM MERGE DE REGIÕES ---
-    cols_regiao = st.session_state.df_regioes[['municipio_normalizado', 'mesoregiao', 'associacao']]
+    cols_regiao = df_regioes[['municipio_normalizado', 'mesoregiao', 'associacao']]
 
     if st.session_state.agrupamento_selecionado == "Município" or st.session_state.agrupamento_selecionado == "Consolidado":
         map_df_fem = st.session_state.df_feminicidio_filtrado['municipio_normalizado'].value_counts().reset_index()
@@ -281,7 +288,7 @@ def render():
         map_df_fem['mesoregiao'] = map_df_fem['mesoregiao'].fillna('Indefinido')
         map_df_fem['associacao'] = map_df_fem['associacao'].fillna('Indefinido')
 
-    fig_mapa_fem = plot_mapa_feminicidio(map_df_fem, st.session_state.geojson_sc,
+    fig_mapa_fem = plot_mapa_feminicidio(map_df_fem, geojson_sc,
                                          st.session_state.agrupamento_selecionado)
     st.plotly_chart(fig_mapa_fem, use_container_width=True, key="mapa_fem")
     st.markdown("---")
@@ -782,7 +789,7 @@ def render():
                     mapa_grupo_para_indice)
                 map_df_letalidade = municipios_no_filtro.fillna(0)
 
-            fig_mapa_letalidade = plot_mapa_letalidade(map_df_letalidade, st.session_state.geojson_sc)
+            fig_mapa_letalidade = plot_mapa_letalidade(map_df_letalidade, geojson_sc)
             st.plotly_chart(fig_mapa_letalidade, use_container_width=True, key="mapa_letalidade")
             st.markdown("---")
 
