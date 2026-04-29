@@ -23,7 +23,6 @@ def carregar_css(caminho_arquivo):
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
     page_title="Observatório da Violência Contra a Mulher - SC",
-    page_icon="💜",
     layout="wide"
 )
 
