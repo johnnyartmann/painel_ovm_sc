@@ -37,12 +37,12 @@ st.markdown(css_personalizado, unsafe_allow_html=True)
 dfs, geojson_data = carregar_dados_processados()
 
 if dfs is not None and geojson_data is not None:
-    st.session_state.df_geral = dfs.get('geral', pd.DataFrame())
-    st.session_state.df_feminicidio = dfs.get('feminicidio', pd.DataFrame())
-    st.session_state.df_populacao = dfs.get('populacao', pd.DataFrame())
-    st.session_state.df_regioes = dfs.get('regioes', pd.DataFrame())
-    st.session_state.df_calendario = dfs.get('calendario', pd.DataFrame())
-    st.session_state.geojson_sc = geojson_data
+    df_geral = dfs.get('geral', pd.DataFrame())
+    df_feminicidio = dfs.get('feminicidio', pd.DataFrame())
+    df_populacao = dfs.get('populacao', pd.DataFrame())
+    df_regioes = dfs.get('regioes', pd.DataFrame())
+    df_calendario = dfs.get('calendario', pd.DataFrame())
+    geojson_sc = geojson_data
 else:
     st.error("🚨 Falha no carregamento dos dados processados.")
     st.warning("Execute o script 'preprocess_data.py' para gerar os arquivos de dados necessários.")
@@ -61,7 +61,7 @@ _rc = st.session_state.reset_counter
 st.sidebar.image("logo_ovm.png", use_container_width=True)
 
 # Lógica de Filtros (Mantida e Executada ANTES do Header)
-if not st.session_state.df_geral.empty:
+if not df_geral.empty:
     with st.sidebar:
         st.header("⚙️ Filtros de Análise")
 
@@ -77,8 +77,8 @@ if not st.session_state.df_geral.empty:
 
         # --- PERÍODO ---
         st.subheader("📅 PERÍODO")
-        min_date = st.session_state.df_geral['data_fato'].min().date()
-        max_date = st.session_state.df_geral['data_fato'].max().date()
+        min_date = df_geral['data_fato'].min().date()
+        max_date = df_geral['data_fato'].max().date()
 
         st.session_state.data_inicial = st.date_input(
             "Data Inicial",
@@ -101,9 +101,9 @@ if not st.session_state.df_geral.empty:
         )
 
         # DataFrame filtrado apenas por data para popular as opções dos outros filtros
-        df_geral_filtrado_por_data = st.session_state.df_geral[
-            (st.session_state.df_geral['data_fato'].dt.date >= st.session_state.data_inicial) &
-            (st.session_state.df_geral['data_fato'].dt.date <= st.session_state.data_final)
+        df_geral_filtrado_por_data = df_geral[
+            (df_geral['data_fato'].dt.date >= st.session_state.data_inicial) &
+            (df_geral['data_fato'].dt.date <= st.session_state.data_final)
         ]
         
         # --- LOCALIZAÇÃO ---
@@ -181,7 +181,7 @@ if not st.session_state.df_geral.empty:
         crimes_por_municipio_para_filtro = df_geral_filtrado_por_data['municipio_normalizado'].value_counts().reset_index()
         crimes_por_municipio_para_filtro.columns = ['municipio_normalizado', 'total_fatos']
 
-        df_populacional_metrics = pd.merge(st.session_state.df_populacao.copy(), crimes_por_municipio_para_filtro, on='municipio_normalizado', how='left')
+        df_populacional_metrics = pd.merge(df_populacao.copy(), crimes_por_municipio_para_filtro, on='municipio_normalizado', how='left')
         df_populacional_metrics['total_fatos'] = df_populacional_metrics['total_fatos'].fillna(0)
         
         anos_no_filtro = df_geral_filtrado_por_data['ano'].unique()
@@ -194,7 +194,7 @@ if not st.session_state.df_geral.empty:
         # --- FILTROS POPULACIONAIS ---
         st.subheader("📊 FILTROS POPULACIONAIS")
         
-        min_pop, max_pop = int(st.session_state.df_populacao['populacao_feminina'].min()), int(st.session_state.df_populacao['populacao_feminina'].max())
+        min_pop, max_pop = int(df_populacao['populacao_feminina'].min()), int(df_populacao['populacao_feminina'].max())
         pop_selecionada = st.slider("População Feminina", min_value=min_pop, max_value=max_pop, value=(min_pop, max_pop), key=f"pop_selecionada_slider_{_rc}")
 
         min_media_fatos, max_media_fatos = float(df_populacional_metrics['media_anual_fatos'].min()), float(df_populacional_metrics['media_anual_fatos'].max())
@@ -208,24 +208,6 @@ if not st.session_state.df_geral.empty:
 
         st.sidebar.markdown("---")
         
-        # Botão de Gerar Relatório PDF
-        if st.sidebar.button("📥 Gerar Relatório PDF", use_container_width=True, type="primary"):
-            with st.spinner("⏳ Gerando relatório PDF... Isso pode levar alguns segundos."):
-                from tabs.relatorio_pdf import gerar_relatorio_pdf
-                pdf_bytes = gerar_relatorio_pdf()
-                st.session_state['pdf_bytes'] = pdf_bytes
-                st.session_state['pdf_nome'] = f"relatorio_ovm_sc_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
-                st.rerun()
-
-        if st.session_state.get('pdf_bytes'):
-            st.sidebar.download_button(
-                label="⬇ Clique para Baixar o PDF",
-                data=st.session_state['pdf_bytes'],
-                file_name=st.session_state.get('pdf_nome', 'relatorio.pdf'),
-                mime="application/pdf",
-                use_container_width=True,
-                type="primary",
-            )
 
         if st.sidebar.button("🔄 Resetar Todos os Filtros", use_container_width=True):
             st.session_state.reset_counter += 1
@@ -245,25 +227,25 @@ if not st.session_state.df_geral.empty:
         (df_populacional_metrics['percentual_mulheres_vitimas'] <= perc_selecionado[1])
     ]['municipio_normalizado']
 
-    st.session_state.df_geral_filtrado = st.session_state.df_geral[
-        (st.session_state.df_geral['data_fato'].dt.date >= st.session_state.data_inicial) &
-        (st.session_state.df_geral['data_fato'].dt.date <= st.session_state.data_final) &
-        (st.session_state.df_geral['fato_comunicado'].isin(fato_selecionado)) &
-        (st.session_state.df_geral['municipio'].isin(municipio_selecionado)) &
-        (st.session_state.df_geral['mesoregiao'].isin(mesoregiao_selecionado)) &
-        (st.session_state.df_geral['associacao'].isin(associacao_selecionado)) &
-        (st.session_state.df_geral['idade_vitima'].between(idade_selecionada[0], idade_max_filtro, inclusive='both')) &
-        (st.session_state.df_geral['municipio_normalizado'].isin(municipios_filtrados_populacao))
+    st.session_state.df_geral_filtrado = df_geral[
+        (df_geral['data_fato'].dt.date >= st.session_state.data_inicial) &
+        (df_geral['data_fato'].dt.date <= st.session_state.data_final) &
+        (df_geral['fato_comunicado'].isin(fato_selecionado)) &
+        (df_geral['municipio'].isin(municipio_selecionado)) &
+        (df_geral['mesoregiao'].isin(mesoregiao_selecionado)) &
+        (df_geral['associacao'].isin(associacao_selecionado)) &
+        (df_geral['idade_vitima'].between(idade_selecionada[0], idade_max_filtro, inclusive='both')) &
+        (df_geral['municipio_normalizado'].isin(municipios_filtrados_populacao))
     ].copy()
 
-    st.session_state.df_feminicidio_filtrado = st.session_state.df_feminicidio[
-        (st.session_state.df_feminicidio['data_fato'].dt.date >= st.session_state.data_inicial) &
-        (st.session_state.df_feminicidio['data_fato'].dt.date <= st.session_state.data_final) &
-        (st.session_state.df_feminicidio['municipio'].isin(municipio_selecionado)) &
-        (st.session_state.df_feminicidio['mesoregiao'].isin(mesoregiao_selecionado)) &
-        (st.session_state.df_feminicidio['associacao'].isin(associacao_selecionado)) &
-        (st.session_state.df_feminicidio['idade_vitima'].between(idade_selecionada[0], idade_max_filtro, inclusive='both')) &
-        (st.session_state.df_feminicidio['municipio_normalizado'].isin(municipios_filtrados_populacao))
+    st.session_state.df_feminicidio_filtrado = df_feminicidio[
+        (df_feminicidio['data_fato'].dt.date >= st.session_state.data_inicial) &
+        (df_feminicidio['data_fato'].dt.date <= st.session_state.data_final) &
+        (df_feminicidio['municipio'].isin(municipio_selecionado)) &
+        (df_feminicidio['mesoregiao'].isin(mesoregiao_selecionado)) &
+        (df_feminicidio['associacao'].isin(associacao_selecionado)) &
+        (df_feminicidio['idade_vitima'].between(idade_selecionada[0], idade_max_filtro, inclusive='both')) &
+        (df_feminicidio['municipio_normalizado'].isin(municipios_filtrados_populacao))
     ].copy()
 
     # Renderiza o header fixo via módulo externo
