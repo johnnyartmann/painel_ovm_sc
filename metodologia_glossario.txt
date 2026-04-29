@@ -1,6 +1,6 @@
 # Metodologia e Glossário do Observatório
 ## Missão e Objetivo do Painel
-Este painel é uma iniciativa do **Observatório da Violência Contra a Mulher (OVM/SC)**, em colaboração com o **Ministério Público de Contas de Santa Catarina (MPC/SC)**, para transformar dados em conhecimento acionável. Nosso objetivo é fornecer a gestores públicos, pesquisadores, jornalistas e à sociedade civil uma ferramenta transparente, interativa e detalhada para monitorar, analisar e compreender as múltiplas facetas da violência contra a mulher em Santa Catarina.
+###Este painel é uma iniciativa do **Observatório da Violência Contra a Mulher (OVM/SC)**, em colaboração com o **Ministério Público de Contas de Santa Catarina (MPC/SC)**, para transformar dados em conhecimento acionável. Nosso objetivo é fornecer a gestores públicos, pesquisadores, jornalistas e à sociedade civil uma ferramenta transparente, interativa e detalhada para monitorar, analisar e compreender as múltiplas facetas da violência contra a mulher em Santa Catarina.
 Acreditamos que o acesso facilitado a dados qualificados é um passo fundamental para o desenvolvimento de políticas públicas mais eficazes, para a alocação estratégica de recursos e para a promoção de um debate público informado que vise a prevenção da violência e a proteção das vítimas.
 ---
 ## Metodologia Aplicada
