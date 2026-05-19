@@ -138,7 +138,7 @@ if not df_geral.empty:
         # Filtro de Associação
         associacoes_disponiveis = sorted([a for a in df_geral_filtrado_por_data['associacao'].dropna().unique() if a != 'Não informado'])
         associacao_selecionado = st.multiselect(
-            "Associação(ões)",
+            "Associação(ões) de Municípios",
             options=associacoes_disponiveis,
             default=associacoes_disponiveis,
             help="Filtre por associação de municípios",
