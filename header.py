@@ -464,7 +464,7 @@ def render_custom_header():
         if tem_detalhe:
             corpo_expander = ""
             if detalhe_meso: corpo_expander += f"<p><strong>Mesorregiões:</strong> {detalhe_meso}</p>"
-            if detalhe_assoc: corpo_expander += f"<p><strong>Associações:</strong> {detalhe_assoc}</p>"
+            if detalhe_assoc: corpo_expander += f"<p><strong>Associações de Municípios:</strong> {detalhe_assoc}</p>"
             if mostrar_expander_mun: 
                 lista_mun = ", ".join(sorted(muns_selecionados))
                 corpo_expander += f"<p><strong>Municípios:</strong> {lista_mun}</p>"
