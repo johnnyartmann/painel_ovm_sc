@@ -133,7 +133,7 @@ if not df_geral.empty:
                 municipio_selecionado = municipios_disponiveis
 
         # Filtro de Mesorregião
-        mesoregioes_disponiveis = sorted([m for m in df_geral_filtrado_por_data['mesoregiao'].unique() if m != 'Não informado'])
+        mesoregioes_disponiveis = sorted(df_geral_filtrado_por_data['mesoregiao'].unique())
         mesoregiao_selecionado = st.multiselect(
             "Mesorregião(ões)",
             options=mesoregioes_disponiveis,
@@ -143,9 +143,9 @@ if not df_geral.empty:
         )
 
         # Filtro de Associação
-        associacoes_disponiveis = sorted([a for a in df_geral_filtrado_por_data['associacao'].dropna().unique() if a != 'Não informado'])
+        associacoes_disponiveis = sorted(df_geral_filtrado_por_data['associacao'].dropna().unique())
         associacao_selecionado = st.multiselect(
-            "Associação(ões) de Municípios",
+            "Associação(ões)",
             options=associacoes_disponiveis,
             default=associacoes_disponiveis,
             help="Filtre por associação de municípios",
