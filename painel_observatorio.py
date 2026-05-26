@@ -201,16 +201,32 @@ if not df_geral.empty:
         st.subheader("📊 FILTROS POPULACIONAIS")
         
         min_pop, max_pop = int(df_populacao['populacao_feminina'].min()), int(df_populacao['populacao_feminina'].max())
-        pop_selecionada = st.slider("População Feminina", min_value=min_pop, max_value=max_pop, value=(min_pop, max_pop), key=f"pop_selecionada_slider_{_rc}")
+        pop_disabled = False
+        if min_pop >= max_pop:
+            max_pop = min_pop + 1
+            pop_disabled = True
+        pop_selecionada = st.slider("População Feminina", min_value=min_pop, max_value=max_pop, value=(min_pop, max_pop), disabled=pop_disabled, key=f"pop_selecionada_slider_{_rc}")
 
         min_media_fatos, max_media_fatos = float(df_populacional_metrics['media_anual_fatos'].min()), float(df_populacional_metrics['media_anual_fatos'].max())
-        media_fatos_selecionada = st.slider("Média Anual de Fatos", min_value=min_media_fatos, max_value=max_media_fatos, value=(min_media_fatos, max_media_fatos), key=f"media_fatos_selecionada_slider_{_rc}")
+        media_disabled = False
+        if min_media_fatos >= max_media_fatos:
+            max_media_fatos = min_media_fatos + 0.01
+            media_disabled = True
+        media_fatos_selecionada = st.slider("Média Anual de Fatos", min_value=min_media_fatos, max_value=max_media_fatos, value=(min_media_fatos, max_media_fatos), disabled=media_disabled, key=f"media_fatos_selecionada_slider_{_rc}")
 
         min_taxa, max_taxa = float(df_populacional_metrics['taxa_por_mil_mulheres'].min()), float(df_populacional_metrics['taxa_por_mil_mulheres'].max())
-        taxa_selecionada = st.slider("Fatos por Mil Mulheres", min_value=min_taxa, max_value=max_taxa, value=(min_taxa, max_taxa), key=f"taxa_selecionada_slider_{_rc}")
+        taxa_disabled = False
+        if min_taxa >= max_taxa:
+            max_taxa = min_taxa + 0.01
+            taxa_disabled = True
+        taxa_selecionada = st.slider("Fatos por Mil Mulheres", min_value=min_taxa, max_value=max_taxa, value=(min_taxa, max_taxa), disabled=taxa_disabled, key=f"taxa_selecionada_slider_{_rc}")
 
         min_perc, max_perc = float(df_populacional_metrics['percentual_mulheres_vitimas'].min()), float(df_populacional_metrics['percentual_mulheres_vitimas'].max())
-        perc_selecionado = st.slider("% de Mulheres Vítimas", min_value=min_perc, max_value=max_perc, value=(min_perc, max_perc), key=f"perc_selecionado_slider_{_rc}")
+        perc_disabled = False
+        if min_perc >= max_perc:
+            max_perc = min_perc + 0.01
+            perc_disabled = True
+        perc_selecionado = st.slider("% de Mulheres Vítimas", min_value=min_perc, max_value=max_perc, value=(min_perc, max_perc), disabled=perc_disabled, key=f"perc_selecionado_slider_{_rc}")
 
         st.sidebar.markdown("---")
         
