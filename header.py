@@ -1,4 +1,5 @@
 import streamlit as st
+import textwrap
 
 def render_custom_header(df_geral_filtrado=None):
     """
@@ -18,7 +19,7 @@ def render_custom_header(df_geral_filtrado=None):
     show_info_cards = active_tab in ["Análise Geral", "Análise de Feminicídios"]
 
     # --- CSS PARA HEADER FIXO ---
-    header_style = """
+    header_style = textwrap.dedent("""
     <style>
         /* RESET & Compatibilidade */
         header[data-testid="stHeader"] {
@@ -286,12 +287,12 @@ def render_custom_header(df_geral_filtrado=None):
             }
         }
     </style>
-    """
+    """)
 
     # --- AJUSTE DINÂMICO DE PADDING (Se cards ocultos) ---
     if not show_info_cards:
         # Adiciona CSS de override em vez de substituir strings (evita conflito encadeado)
-        header_style += """
+        header_style += textwrap.dedent("""
         <style>
             .block-container {
                 padding-top: 110px !important;
@@ -312,7 +313,7 @@ def render_custom_header(df_geral_filtrado=None):
                 }
             }
         </style>
-        """
+        """)
 
     # --- INJETAR CSS ---
     st.markdown(header_style, unsafe_allow_html=True)
@@ -477,7 +478,7 @@ def render_tab_buttons():
             on_click=mudar_aba,
             args=("Análise Geral",),
             type=tipo,
-            use_container_width=True
+            width='stretch'
         )
 
     with col2:
@@ -488,7 +489,7 @@ def render_tab_buttons():
             on_click=mudar_aba,
             args=("Análise de Feminicídios",),
             type=tipo,
-            use_container_width=True
+            width='stretch'
         )
 
     with col3:
@@ -499,7 +500,7 @@ def render_tab_buttons():
             on_click=mudar_aba,
             args=("Metodologia e Glossário",),
             type=tipo,
-            use_container_width=True
+            width='stretch'
         )
 
     with col4:
@@ -510,7 +511,7 @@ def render_tab_buttons():
             on_click=mudar_aba,
             args=("Download de Dados",),
             type=tipo,
-            use_container_width=True
+            width='stretch'
         )
 
     # (wrapper div closing tag removido — não funcionava com widgets Streamlit)
