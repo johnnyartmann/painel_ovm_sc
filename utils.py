@@ -4,6 +4,7 @@ import unicodedata
 
 import numpy as np
 import pandas as pd
+import streamlit as st
 
 
 def normalizar_nome(texto):
@@ -18,7 +19,8 @@ def normalizar_nome(texto):
 
     # --- 1. Mapa de Exceções (Hard-coded) ---
     mapa_excecoes = {
-        'herval': 'herval d oeste'
+        'herval': 'herval d oeste',
+        'luís alves': 'luiz alves',
         # (Mantemos a correção para o arquivo Geo)
     }
     if texto in mapa_excecoes:
@@ -132,7 +134,7 @@ def calcular_tendencia_mensal(df, coluna_data='data_fato', coluna_grupo=None, mi
     else:
         # Cálculo por grupo
         resultados = {}
-        for grupo, df_grupo in df_temp.groupby(coluna_grupo):
+        for grupo, df_grupo in df_temp.groupby(coluna_grupo, observed=True):
             contagem_mensal = df_grupo.groupby('ano_mes').size().sort_index()
 
             if len(contagem_mensal) < min_meses:
@@ -199,3 +201,11 @@ def format_int_br(val):
     if pd.isna(val):
         return '-'
     return f"{val:,.0f}".replace(",", ".")
+
+
+def render_plotly_safe(fig, key, use_container_width=True, **kwargs):
+    """Renderiza um grafico Plotly com tratamento de excecao para evitar crash total."""
+    try:
+        st.plotly_chart(fig, use_container_width=use_container_width, key=key, **kwargs)
+    except Exception as e:
+        st.warning(f"Nao foi possivel gerar o grafico: {e}")
