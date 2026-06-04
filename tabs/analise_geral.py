@@ -494,15 +494,15 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.button(label="Soma dos Crimes", on_click=set_map_view, args=('Soma dos Crimes',), use_container_width=True,
+        st.button(label="Soma dos Crimes", on_click=set_map_view, args=('Soma dos Crimes',), width='stretch',
                   type="primary" if st.session_state.map_view_type == 'Soma dos Crimes' else "secondary")
     with col2:
         st.button(label="Crimes por Mil Mulheres", on_click=set_map_view, args=('Crimes por Mil Mulheres',),
-                  use_container_width=True,
+                  width='stretch',
                   type="primary" if st.session_state.map_view_type == 'Crimes por Mil Mulheres' else "secondary")
     with col3:
         st.button(label="% de Mulheres Vítimas", on_click=set_map_view, args=('% de Mulheres Vítimas',),
-                  use_container_width=True,
+                  width='stretch',
                   type="primary" if st.session_state.map_view_type == '% de Mulheres Vítimas' else "secondary")
 
     view_type = st.session_state.map_view_type
@@ -588,7 +588,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
 
         fig_mapa = plot_mapa_geral(map_df, geojson_sc, color_col, label_text,
                                    st.session_state.agrupamento_selecionado)
-        render_plotly_safe(fig_mapa, use_container_width=True, key="mapa_geral")
+        render_plotly_safe(fig_mapa, width='stretch', key="mapa_geral")
     else:
         st.info("Não há dados de ocorrências para exibir no mapa com os filtros selecionados.")
     st.markdown("---")
@@ -612,7 +612,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
     if not registros_por_mes_ano.empty:
         fig_temporal = plot_serie_temporal(registros_por_mes_ano, chart_type_temporal,
                                            st.session_state.agrupamento_selecionado, color_param_temporal)
-        render_plotly_safe(fig_temporal, use_container_width=True, key="temporal_geral")
+        render_plotly_safe(fig_temporal, width='stretch', key="temporal_geral")
     else:
         st.info("Não há dados suficientes para exibir a série histórica.")
     st.markdown("---")
@@ -635,7 +635,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
 
     if not registros_por_dia.dropna(subset=['Quantidade']).empty and registros_por_dia['Quantidade'].sum() > 0:
         fig_dia_semana = plot_dia_semana(registros_por_dia, chart_type_dia_semana)
-        render_plotly_safe(fig_dia_semana, use_container_width=True, key="dia_semana_geral")
+        render_plotly_safe(fig_dia_semana, width='stretch', key="dia_semana_geral")
     else:
         st.info("Não há dados suficientes para exibir a distribuição por dia da semana.")
     st.markdown("---")
@@ -664,7 +664,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
                 lambda x: f'{x} (Parcial)' if x == ano_corrente else str(x)
             )
             fig_ano = plot_por_ano(registros_por_ano, chart_type_ano, st.session_state.agrupamento_selecionado, color_param)
-            render_plotly_safe(fig_ano, use_container_width=True, key="ano_geral")
+            render_plotly_safe(fig_ano, width='stretch', key="ano_geral")
         else:
             st.info("Não há dados de ocorrências por ano.")
 
@@ -686,7 +686,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
 
         if not registros_por_mes.dropna(subset=['Quantidade']).empty and registros_por_mes['Quantidade'].sum() > 0:
             fig_mes = plot_por_mes(registros_por_mes, chart_type_mes)
-            render_plotly_safe(fig_mes, use_container_width=True, key="mes_geral")
+            render_plotly_safe(fig_mes, width='stretch', key="mes_geral")
         else:
             st.info("Não há dados de ocorrências por mês.")
 
@@ -708,7 +708,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
 
         if not registros_por_faixa.dropna(subset=['Quantidade']).empty and registros_por_faixa['Quantidade'].sum() > 0:
             fig_faixa_etaria = plot_faixa_etaria(registros_por_faixa, chart_type_faixa_etaria)
-            render_plotly_safe(fig_faixa_etaria, use_container_width=True, key="faixa_etaria_geral")
+            render_plotly_safe(fig_faixa_etaria, width='stretch', key="faixa_etaria_geral")
         else:
             st.info("Não há dados de faixa etária para exibir.")
 
@@ -731,7 +731,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
         if not registros_por_fato.empty:
             fig_fato = plot_tipo_crime(registros_por_fato, chart_type_fato, st.session_state.agrupamento_selecionado,
                                        color_param)
-            render_plotly_safe(fig_fato, use_container_width=True, key="fato_geral")
+            render_plotly_safe(fig_fato, width='stretch', key="fato_geral")
         else:
             st.info("Não há dados de natureza das ocorrências para exibir.")
 
@@ -796,7 +796,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
 
                 styler = tabela_consolidada.style.map(colorir_percentual, subset=colunas_para_colorir).format(
                     format_dict)
-                st.dataframe(styler, use_container_width=True, hide_index=True)
+                st.dataframe(styler, width='stretch', hide_index=True)
             else:
                 st.warning("Não há dados para exibir na tabela consolidada com os filtros selecionados.")
         else:
@@ -854,7 +854,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
                     colunas_para_colorir.append('Tendência (% ao ano)')
 
                 styler = tabela_total.style.map(colorir_percentual, subset=colunas_para_colorir).format(format_dict)
-                st.dataframe(styler, use_container_width=True, hide_index=True)
+                st.dataframe(styler, width='stretch', hide_index=True)
             else:
                 st.warning("Não há dados para exibir na tabela consolidada com os filtros selecionados.")
         else:
@@ -903,7 +903,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
     st.dataframe(tabela_populacional.style.format(
         {'Média Anual de Fatos Ocorridos': '{:.2f}', 'Fatos por Mil Mulheres (anual)': '{:.2f}',
          '% de Mulheres Vítimas (anual)': '{:.2f}%', 'População Feminina': '{:,.0f}',
-         'Tendência (% ao ano)': '{:+.1f}%'}), use_container_width=True)
+         'Tendência (% ao ano)': '{:+.1f}%'}), width='stretch')
 
     st.markdown("---")
 
@@ -934,7 +934,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
         df_plot = crime_percentages.melt(id_vars='faixa_etaria', var_name='fato_comunicado', value_name='percentual')
 
         fig_barras_vulnerabilidade = plot_barras_vulnerabilidade(df_plot)
-        render_plotly_safe(fig_barras_vulnerabilidade, use_container_width=True, key="barras_vulnerabilidade")
+        render_plotly_safe(fig_barras_vulnerabilidade, width='stretch', key="barras_vulnerabilidade")
     else:
         st.warning("Não há dados suficientes para gerar o gráfico de vulnerabilidade com os filtros selecionados.")
 
@@ -956,7 +956,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
             margin=dict(b=100)        
         )
         
-        render_plotly_safe(fig_heatmap, use_container_width=True, key="heatmap_vulnerabilidade")
+        render_plotly_safe(fig_heatmap, width='stretch', key="heatmap_vulnerabilidade")
     else:
         st.warning("Não há dados suficientes para gerar o heatmap com os filtros selecionados.")
     
@@ -1012,7 +1012,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
             - **Pontos Fora da Tendência:** Municípios que estão muito acima ou abaixo da linha de tendência merecem atenção especial. Acima da linha pode indicar falhas no sistema de proteção, enquanto abaixo pode indicar boas práticas que poderiam ser replicadas.""")
             
         fig_efetividade = plot_efetividade_denuncia(df_efetividade)
-        render_plotly_safe(fig_efetividade, use_container_width=True, key="scatter_efetividade")
+        render_plotly_safe(fig_efetividade, width='stretch', key="scatter_efetividade")
 
     else:
         st.warning("Não há dados suficientes para gerar a análise de efetividade com os filtros selecionados.")
@@ -1085,7 +1085,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
                                                 media_pos]}).sort_values(
             'Média Diária de Ocorrências', ascending=False)
         fig_barras_sazonal = plot_barras_sazonal(df_medias)
-        render_plotly_safe(fig_barras_sazonal, use_container_width=True, key="barras_sazonal")
+        render_plotly_safe(fig_barras_sazonal, width='stretch', key="barras_sazonal")
         
         st.markdown("---")
         
@@ -1100,7 +1100,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
                 contagem_feriados = df_feriados['nome_feriado'].value_counts().reset_index()
                 contagem_feriados.columns = ['nome_feriado', 'total_ocorrencias']
                 fig_feriados = plot_barras_feriados(contagem_feriados)
-                render_plotly_safe(fig_feriados, use_container_width=True, key="barras_feriados")
+                render_plotly_safe(fig_feriados, width='stretch', key="barras_feriados")
                 
             
                 st.markdown("#### 🔎 Detalhar Tipo de Crime por Feriado")
@@ -1143,7 +1143,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
                         height=max(300, len(contagem_crimes_feriado) * 40)
                     )
                     
-                    render_plotly_safe(fig_detalhe_feriado, use_container_width=True, key="grafico_detalhe_feriado")
+                    render_plotly_safe(fig_detalhe_feriado, width='stretch', key="grafico_detalhe_feriado")
                 else:
                     st.info(f"Não há registros detalhados para o feriado selecionado nos filtros atuais.")
 
@@ -1192,7 +1192,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
                                                                                                 for col in
                                                                                                 heatmap_pivot.columns]
         fig_heatmap_sazonal = plot_heatmap_sazonal(heatmap_pivot)
-        render_plotly_safe(fig_heatmap_sazonal, use_container_width=True, key="heatmap_sazonal")
+        render_plotly_safe(fig_heatmap_sazonal, width='stretch', key="heatmap_sazonal")
         st.markdown("---")
     else:
         st.warning("Não há dados para exibir a Análise Sazonal com os filtros selecionados.")
