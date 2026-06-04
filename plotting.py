@@ -48,25 +48,47 @@ def plot_mapa_geral(map_df, geojson_sc, color_col, label_text, agrupamento_selec
     return fig_mapa
 
 
+def formatar_ano_mes(val):
+    if not isinstance(val, str) or '-' not in val:
+        return val
+    try:
+        parts = val.split('-')
+        if len(parts) >= 2:
+            ano, mes = parts[0], parts[1]
+            nomes_meses = {
+                '01': 'Janeiro', '02': 'Fevereiro', '03': 'Março', '04': 'Abril',
+                '05': 'Maio', '06': 'Junho', '07': 'Julho', '08': 'Agosto',
+                '09': 'Setembro', '10': 'Outubro', '11': 'Novembro', '12': 'Dezembro'
+            }
+            return f"{nomes_meses.get(mes, mes)}/{ano}"
+        return val
+    except Exception:
+        return val
+
+
 def plot_serie_temporal(registros_por_mes_ano, chart_type, agrupamento_selecionado, color_param_temporal):
     """Gera o gráfico de série temporal."""
+    df_temp = registros_por_mes_ano.copy()
+    df_temp['ano_mes'] = df_temp['ano_mes'].apply(formatar_ano_mes)
+    
     if chart_type == "Barras":
-        fig = px.bar(registros_por_mes_ano, x='ano_mes', y='quantidade', color=color_param_temporal,
+        fig = px.bar(df_temp, x='ano_mes', y='quantidade', color=color_param_temporal,
                      labels={'ano_mes': 'Mês/Ano', 'quantidade': 'Quantidade de Registros'}, template='plotly_white')
         if agrupamento_selecionado == "Consolidado":
             fig.update_traces(marker_color='#8A2BE2')
     elif chart_type == "Área":
-        fig = px.area(registros_por_mes_ano, x='ano_mes', y='quantidade', color=color_param_temporal,
+        fig = px.area(df_temp, x='ano_mes', y='quantidade', color=color_param_temporal,
                       labels={'ano_mes': 'Mês/Ano', 'quantidade': 'Quantidade de Registros'}, template='plotly_white')
         if agrupamento_selecionado == "Consolidado":
             fig.update_traces(line_color='#8A2BE2')
     else:  # Linha
-        fig = px.line(registros_por_mes_ano, x='ano_mes', y='quantidade', color=color_param_temporal,
+        fig = px.line(df_temp, x='ano_mes', y='quantidade', color=color_param_temporal,
                       labels={'ano_mes': 'Mês/Ano', 'quantidade': 'Quantidade de Registros'}, template='plotly_white',
                       markers=True)
         if agrupamento_selecionado == "Consolidado":
             fig.update_traces(line_color='#8A2BE2')
     fig.update_layout(separators=",.")
+    fig.update_xaxes(type='category')
     return fig
 
 
@@ -224,26 +246,30 @@ def plot_mapa_feminicidio(map_df_fem, geojson_sc, agrupamento_selecionado):
 
 def plot_feminicidio_serie_temporal(feminicidios_por_mes, chart_type, agrupamento_selecionado, color_param):
     """Gera o gráfico de série temporal de feminicídios."""
+    df_temp = feminicidios_por_mes.copy()
+    df_temp['Mês/Ano'] = df_temp['Mês/Ano'].apply(formatar_ano_mes)
+    
     if chart_type == "Linha":
-        fig = px.line(feminicidios_por_mes, x='Mês/Ano', y='Quantidade', color=color_param,
-                      labels={'x': 'Mês/Ano', 'y': 'Quantidade'},
+        fig = px.line(df_temp, x='Mês/Ano', y='Quantidade', color=color_param,
+                      labels={'Mês/Ano': 'Mês/Ano', 'Quantidade': 'Quantidade'},
                       template='plotly_white', markers=True)
         if agrupamento_selecionado == "Consolidado":
             fig.update_traces(line_color='#8A2BE2')
     elif chart_type == "Área":
-        fig = px.area(feminicidios_por_mes, x='Mês/Ano', y='Quantidade', color=color_param,
-                      labels={'x': 'Mês/Ano', 'y': 'Quantidade'},
+        fig = px.area(df_temp, x='Mês/Ano', y='Quantidade', color=color_param,
+                      labels={'Mês/Ano': 'Mês/Ano', 'Quantidade': 'Quantidade'},
                       template='plotly_white')
         if agrupamento_selecionado == "Consolidado":
             fig.update_traces(line_color='#8A2BE2')
     else:  # Barras
-        fig = px.bar(feminicidios_por_mes, x='Mês/Ano', y='Quantidade', color=color_param,
-                     labels={'x': 'Mês/Ano', 'y': 'Quantidade'},
+        fig = px.bar(df_temp, x='Mês/Ano', y='Quantidade', color=color_param,
+                     labels={'Mês/Ano': 'Mês/Ano', 'Quantidade': 'Quantidade'},
                      template='plotly_white', text='Quantidade')
         if agrupamento_selecionado == "Consolidado":
             fig.update_traces(marker_color='#8A2BE2')
         fig.update_traces(textposition='outside')
     fig.update_layout(separators=",.")
+    fig.update_xaxes(type='category')
     return fig
 
 
@@ -371,11 +397,13 @@ def plot_sankey_agressor(df_feminicidio_filtrado):
         )
         
         return fig
-    return None
+    return go.Figure().add_annotation(text="Dados do historico do agressor indisponiveis para os filtros atuais.",
+                                       showarrow=False, font=dict(size=14))
 
 
 def plot_heatmap_cruzado(df_heatmap_cruzado):
-    """Gera o heatmap de análise cruzada (vítima vs. agressor)."""
+    """Gera o heatmap de analise cruzada (vitima vs. agressor)."""
+    df_heatmap_cruzado = df_heatmap_cruzado.copy()
     bins = [0, 17, 29, 40, 50, 60, 120]
     labels = ['0-17 anos', '18-29 anos', '30-40 anos', '41-50 anos', '51-60 anos', '60+ anos']
 
@@ -622,7 +650,8 @@ def plot_distribuicao_horaria(df_feminicidio):
         if df_temp['hora_temp'].isnull().all() and pd.api.types.is_numeric_dtype(df_temp['hora_fato']):
              df_temp['hora_temp'] = df_temp['hora_fato'].astype(int)
     except Exception:
-        return None
+        return go.Figure().add_annotation(text="Dados de horario indisponiveis para os filtros atuais.",
+                                           showarrow=False, font=dict(size=14))
 
     df_contagem = df_temp['hora_temp'].value_counts().sort_index().reset_index()
     df_contagem.columns = ['Hora do Dia', 'Quantidade']
@@ -756,7 +785,8 @@ def plot_matriz_risco_local_meio(df_feminicidio):
     Heatmap: Tipo de Local vs Meio do Crime.
     """
     if 'tipo_local' not in df_feminicidio.columns or 'meio_crime' not in df_feminicidio.columns:
-        return None
+        return go.Figure().add_annotation(text="Dados de tipo de local ou meio do crime indisponiveis.",
+                                           showarrow=False, font=dict(size=14))
         
     df_pivot = df_feminicidio.groupby(['tipo_local', 'meio_crime']).size().unstack(fill_value=0)
     
@@ -785,7 +815,8 @@ def plot_correlacao_tempo_violencia(df_feminicidio):
     # Filtra colunas necessárias
     cols = ['tempo_relacionamento', 'bo_de_vd_contra_o_autor']
     if not all(c in df_feminicidio.columns for c in cols):
-        return None
+        return go.Figure().add_annotation(text="Dados de tempo de relacionamento ou BO indisponiveis.",
+                                           showarrow=False, font=dict(size=14))
         
     df_plot = df_feminicidio[cols].copy().dropna()
     
