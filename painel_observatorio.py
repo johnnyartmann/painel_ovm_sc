@@ -47,7 +47,7 @@ if 'agrupamento_selecionado' not in st.session_state:
 
 _rc = st.session_state.reset_counter
 
-st.sidebar.image("logo_ovm.png", use_container_width=True)
+st.sidebar.image("logo_ovm.png", width='stretch')
 
 if not df_geral.empty:
     with st.sidebar:
@@ -197,7 +197,7 @@ if not df_geral.empty:
 
         st.sidebar.markdown("---")
 
-        if st.sidebar.button("Resetar Todos os Filtros", use_container_width=True):
+        if st.sidebar.button("Resetar Todos os Filtros", width='stretch'):
             st.session_state.reset_counter += 1
             st.rerun()
 
