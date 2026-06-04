@@ -203,9 +203,9 @@ def format_int_br(val):
     return f"{val:,.0f}".replace(",", ".")
 
 
-def render_plotly_safe(fig, key, use_container_width=True, **kwargs):
-    """Renderiza um grafico Plotly com tratamento de excecao para evitar crash total."""
+def render_plotly_safe(fig, key, width='stretch', **kwargs):
+    """Renderiza um grafico Plotly com tratamento de exeacao para evitar crash total."""
     try:
-        st.plotly_chart(fig, use_container_width=use_container_width, key=key, **kwargs)
+        st.plotly_chart(fig, width=width, key=key, **kwargs)
     except Exception as e:
         st.warning(f"Nao foi possivel gerar o grafico: {e}")
