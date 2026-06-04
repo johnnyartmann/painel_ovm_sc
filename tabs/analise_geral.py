@@ -7,6 +7,7 @@ from plotting import (plot_barras_sazonal, plot_barras_vulnerabilidade, plot_dia
 from utils import to_csv, to_excel, calcular_cagr, calcular_tendencia_mensal, colorir_percentual, formatar_seta_percentual, format_number_br, format_int_br, render_plotly_safe
 
 
+
 def criar_tabela_consolidada(df, coluna_agrupamento, nome_agrupamento, df_original_filtrado=None):
     """Cria uma tabela consolidada com dados de crimes por [agrupamento]."""
     df_agrupado = df.groupby([coluna_agrupamento, 'fato_comunicado', 'ano'], observed=True).size().reset_index(name='total_crime')
@@ -71,7 +72,7 @@ def criar_tabela_consolidada(df, coluna_agrupamento, nome_agrupamento, df_origin
 
     df_consolidado = df_pivot[ordem_final].reset_index()
     nome_coluna = f"Nome do {nome_agrupamento}" if nome_agrupamento == "Município" else nome_agrupamento
-    df_consolidado.rename(columns={coluna_agrupamento: nome_coluna, 'fato_comunicado': 'Fato Comunicado'}, inplace=True)
+    df_consolidado.rename(columns={coluna_agrupamento: nome_coluna, 'fato_comunicado': 'Tipo de Crime'}, inplace=True)
 
     return df_consolidado
 
@@ -143,201 +144,7 @@ def criar_tabela_total_consolidada(df, df_original_filtrado=None):
     ordem_final = [str(col) for col in ordem_final]
 
     df_consolidado = df_pivot[ordem_final].reset_index()
-    df_consolidado.rename(columns={'fato_comunicado': 'Fato Comunicado'}, inplace=True)
-
-    return df_consolidado
-
-
-def criar_tabela_populacional_agrupada(df_crimes, df_pop, df_regioes, agrupamento, num_anos):
-    """Cria uma tabela de análise populacional, permitindo o agrupamento por diferentes níveis."""
-
-    if num_anos == 0: num_anos = 1
-
-    df_pop_com_regioes = pd.merge(df_pop, df_regioes.drop(columns='municipio'), on='municipio_normalizado', how='left')
-
-    if agrupamento == "Consolidado":
-        total_fatos = df_crimes.shape[0]
-        municipios_presentes = df_crimes['municipio_normalizado'].unique()
-        pop_filtrada = df_pop_com_regioes[df_pop_com_regioes['municipio_normalizado'].isin(municipios_presentes)]
-        total_populacao = pop_filtrada['populacao_feminina'].sum()
-
-        media_anual = total_fatos / num_anos
-        taxa = (media_anual / total_populacao) * 1000 if total_populacao > 0 else 0
-        percentual = (media_anual / total_populacao) * 100 if total_populacao > 0 else 0
-
-        tabela = pd.DataFrame([{'Localidade': 'Santa Catarina (Filtro Aplicado)', 'População Feminina': total_populacao,
-                                'Média Anual de Fatos Ocorridos': media_anual, 'Fatos por Mil Mulheres (anual)': taxa,
-                                '% de Mulheres Vítimas (anual)': percentual}])
-        return tabela.set_index('Localidade')
-
-    coluna_agrupamento = {
-        "Município": "municipio",
-        "Mesorregião": "mesoregiao",
-        "Associação": "associacao"
-    }[agrupamento]
-
-    crimes_agrupado = df_crimes[coluna_agrupamento].value_counts().reset_index()
-    crimes_agrupado.columns = [coluna_agrupamento, 'total_fatos']
-
-    if agrupamento == "Município":
-        pop_agrupada = df_pop_com_regioes[[coluna_agrupamento, 'populacao_feminina']]
-    else:
-        pop_agrupada = df_pop_com_regioes.groupby(coluna_agrupamento, observed=True)['populacao_feminina'].sum().reset_index()
-
-    df_agregado = pd.merge(crimes_agrupado, pop_agrupada, on=coluna_agrupamento, how='left')
-
-    df_agregado['media_anual_fatos'] = df_agregado['total_fatos'] / num_anos
-    df_agregado['taxa_por_mil_mulheres'] = (
-                                                      (df_agregado['media_anual_fatos'] / df_agregado[
-                                                          'populacao_feminina']) * 1000).fillna(0)
-    df_agregado['percentual_mulheres_vitimas'] = (
-                                                            (df_agregado['media_anual_fatos'] / df_agregado[
-                                                                'populacao_feminina']) * 100).fillna(0)
-
-    tabela_final = df_agregado.rename(columns={
-        coluna_agrupamento: agrupamento,
-        'populacao_feminina': 'População Feminina',
-        'media_anual_fatos': 'Média Anual de Fatos Ocorridos',
-        'taxa_por_mil_mulheres': 'Fatos por Mil Mulheres (anual)',
-        'percentual_mulheres_vitimas': '% de Mulheres Vítimas (anual)'
-    })
-def criar_tabela_consolidada(df, coluna_agrupamento, nome_agrupamento, df_original_filtrado=None):
-    """Cria uma tabela consolidada com dados de crimes por [agrupamento]."""
-    df_agrupado = df.groupby([coluna_agrupamento, 'fato_comunicado', 'ano'], observed=True).size().reset_index(name='total_crime')
-    df_pivot = df_agrupado.pivot_table(index=[coluna_agrupamento, 'fato_comunicado'], columns='ano',
-                                       values='total_crime', fill_value=0)
-
-    anos_int = sorted([col for col in df_pivot.columns if isinstance(col, int)])
-    ano_corrente = pd.Timestamp.now().year
-
-    df_pivot = df_pivot.reindex(sorted(df_pivot.columns), axis=1)
-    df_pivot['total'] = df_pivot.sum(axis=1)
-
-    if len(anos_int) > 1:
-        for i in range(1, len(anos_int)):
-            ano_atual = anos_int[i]
-            if ano_atual == ano_corrente:
-                break
-            ano_anterior = anos_int[i - 1]
-            coluna_evolucao = f'Diferença {ano_anterior}-{ano_atual}'
-            df_pivot[coluna_evolucao] = (
-                                                (df_pivot[ano_atual] - df_pivot[ano_anterior]) / df_pivot[
-                                            ano_anterior].replace(0, pd.NA) * 100
-                                        )
-
-    # Tendência via regressão linear mensal (usa todos os meses, sem exclusão)
-    if df_original_filtrado is not None and not df_original_filtrado.empty:
-        tendencias = {}
-        for (grupo, fato), df_grupo in df_original_filtrado.groupby([coluna_agrupamento, 'fato_comunicado'], observed=True):
-            tend = calcular_tendencia_mensal(df_grupo)
-            tendencias[(grupo, fato)] = tend
-        serie_tendencias = pd.Series(tendencias)
-        if serie_tendencias.notna().any():
-            df_pivot['Tendência (% ao ano)'] = serie_tendencias
-
-    if ano_corrente in df_pivot.columns:
-        df_pivot.rename(columns={ano_corrente: f'{ano_corrente} (Parcial)'}, inplace=True)
-
-    ordem_colunas = []
-    if anos_int:
-        ordem_colunas.append(anos_int[0])
-        for i in range(1, len(anos_int)):
-            ano_anterior = anos_int[i - 1]
-            ano_atual = anos_int[i]
-
-            if ano_atual == ano_corrente:
-                ordem_colunas.append(f'{ano_atual} (Parcial)')
-            else:
-                ordem_colunas.append(ano_atual)
-
-            coluna_evolucao = f'Diferença {ano_anterior}-{ano_atual}'
-            if coluna_evolucao in df_pivot.columns:
-                ordem_colunas.append(coluna_evolucao)
-
-    ordem_colunas.append('total')
-    if 'Tendência (% ao ano)' in df_pivot.columns:
-        ordem_colunas.append('Tendência (% ao ano)')
-
-    ordem_final = [col for col in ordem_colunas if col in df_pivot.columns]
-
-    df_pivot.columns = df_pivot.columns.map(str)
-    ordem_final = [str(col) for col in ordem_final]
-
-    df_consolidado = df_pivot[ordem_final].reset_index()
-    nome_coluna = f"Nome do {nome_agrupamento}" if nome_agrupamento == "Município" else nome_agrupamento
-    df_consolidado.rename(columns={coluna_agrupamento: nome_coluna, 'fato_comunicado': 'Fato Comunicado'}, inplace=True)
-
-    return df_consolidado
-
-
-def criar_tabela_total_consolidada(df, df_original_filtrado=None):
-    """Cria uma tabela consolidada com o total de crimes por tipo."""
-    df_agrupado = df.groupby(['fato_comunicado', 'ano'], observed=True).size().reset_index(name='total_crime')
-    df_pivot = df_agrupado.pivot_table(index='fato_comunicado', columns='ano', values='total_crime', fill_value=0)
-
-    anos_existentes = [col for col in df_pivot.columns if isinstance(col, (int, float))]
-    if anos_existentes:
-        anos_todos = range(int(min(anos_existentes)), int(max(anos_existentes)) + 1)
-        for ano in anos_todos:
-            if ano not in df_pivot.columns:
-                df_pivot[ano] = 0
-
-    anos_int = sorted([col for col in df_pivot.columns if isinstance(col, int)])
-    ano_corrente = pd.Timestamp.now().year
-
-    df_pivot = df_pivot.reindex(sorted(df_pivot.columns), axis=1)
-    df_pivot['total'] = df_pivot.sum(axis=1)
-
-    if len(anos_int) > 1:
-        for i in range(1, len(anos_int)):
-            ano_atual = anos_int[i]
-            if ano_atual == ano_corrente:
-                break
-            ano_anterior = anos_int[i - 1]
-            coluna_evolucao = f'Diferença {ano_anterior}-{ano_atual}'
-            denominador = df_pivot[ano_anterior].replace(0, pd.NA)
-            df_pivot[coluna_evolucao] = (df_pivot[ano_atual] - df_pivot[ano_anterior]) / denominador * 100
-
-    # Tendência via regressão linear mensal (usa todos os meses, sem exclusão)
-    if df_original_filtrado is not None and not df_original_filtrado.empty:
-        tendencias = {}
-        for fato, df_grupo in df_original_filtrado.groupby('fato_comunicado', observed=True):
-            tend = calcular_tendencia_mensal(df_grupo)
-            tendencias[fato] = tend
-        serie_tendencias = pd.Series(tendencias)
-        if serie_tendencias.notna().any():
-            df_pivot['Tendência (% ao ano)'] = serie_tendencias
-
-    if ano_corrente in df_pivot.columns:
-        df_pivot.rename(columns={ano_corrente: f'{ano_corrente} (Parcial)'}, inplace=True)
-
-    ordem_colunas = []
-    if anos_int:
-        ordem_colunas.append(anos_int[0])
-        for i in range(1, len(anos_int)):
-            ano_anterior = anos_int[i - 1]
-            ano_atual = anos_int[i]
-
-            if ano_atual == ano_corrente:
-                ordem_colunas.append(f'{ano_atual} (Parcial)')
-            else:
-                ordem_colunas.append(ano_atual)
-
-            coluna_evolucao = f'Diferença {ano_anterior}-{ano_atual}'
-            if coluna_evolucao in df_pivot.columns:
-                ordem_colunas.append(coluna_evolucao)
-
-    ordem_colunas.append('total')
-    if 'Tendência (% ao ano)' in df_pivot.columns:
-        ordem_colunas.append('Tendência (% ao ano)')
-
-    ordem_final = [col for col in ordem_colunas if col in df_pivot.columns]
-
-    df_pivot.columns = df_pivot.columns.map(str)
-    ordem_final = [str(col) for col in ordem_final]
-
-    df_consolidado = df_pivot[ordem_final].reset_index()
-    df_consolidado.rename(columns={'fato_comunicado': 'Fato Comunicado'}, inplace=True)
+    df_consolidado.rename(columns={'fato_comunicado': 'Tipo de Crime'}, inplace=True)
 
     return df_consolidado
 
