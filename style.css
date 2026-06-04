@@ -399,3 +399,52 @@ hr {
         padding: 1rem;
     }
 }
+
+/* ========== REGRAS DE IMPRESSÃO (SALVAR PDF VIA CTRL+P) ========== */
+@media print {
+    /* Oculta elementos interativos e estruturais desnecessários */
+    [data-testid="stSidebar"],
+    .footer,
+    [data-testid="stHeader"],
+    [data-testid="stHorizontalBlock"] button,
+    button,
+    .header-nav-row,
+    .custom-info-cards-wrapper {
+        display: none !important;
+    }
+
+    /* Ajusta o container principal para usar todo o espaço da folha */
+    .main, .block-container {
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        background: white !important;
+    }
+
+    /* Força quebra de página limpa antes de cada título de seção */
+    h1, h2 {
+        page-break-before: always;
+        break-before: page;
+        color: #4a148c !important;
+        padding-top: 1rem !important;
+    }
+
+    /* Impede que blocos de gráficos, tabelas ou KPIs sejam cortados ao meio */
+    .js-plotly-plot, 
+    [data-testid="stDataFrame"], 
+    [data-testid="stMetric"],
+    .info-card {
+        page-break-inside: avoid;
+        break-inside: avoid;
+        box-shadow: none !important;
+        border: 1px solid #e0e0e0 !important;
+    }
+
+    /* Otimiza cores para impressão (fundo branco / texto escuro) */
+    body {
+        color: black !important;
+        background: white !important;
+    }
+}
+
