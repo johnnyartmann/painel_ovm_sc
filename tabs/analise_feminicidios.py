@@ -287,7 +287,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
         map_df_fem['associacao'] = map_df_fem['associacao'].fillna('Indefinido')
         fig_mapa_fem = plot_mapa_feminicidio(map_df_fem, geojson_sc,
                                              st.session_state.agrupamento_selecionado)
-        render_plotly_safe(fig_mapa_fem, use_container_width=True, key="mapa_fem")
+        render_plotly_safe(fig_mapa_fem, width='stretch', key="mapa_fem")
     else:
         st.info("Não há dados de feminicídio para exibir no mapa com os filtros selecionados.")
     st.markdown("---")
@@ -313,7 +313,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
 
     fig_mes_ano = plot_feminicidio_serie_temporal(feminicidios_por_mes, chart_type_fem_mes_ano,
                                                   st.session_state.agrupamento_selecionado, color_param)
-    render_plotly_safe(fig_mes_ano, use_container_width=True, key="mes_ano_fem")
+    render_plotly_safe(fig_mes_ano, width='stretch', key="mes_ano_fem")
     st.markdown("---")
 
     col_ano, col_local = st.columns(2)
@@ -343,7 +343,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
 
         fig_ano_fem = plot_feminicidio_por_ano(feminicidios_por_ano, chart_type_fem_ano,
                                                st.session_state.agrupamento_selecionado, color_param)
-        render_plotly_safe(fig_ano_fem, use_container_width=True, key="ano_fem")
+        render_plotly_safe(fig_ano_fem, width='stretch', key="ano_fem")
 
     with col_local:
     
@@ -364,7 +364,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
 
             fig_localidade = plot_localidade_crime(localidade_crime, chart_type_localidade,
                                                    st.session_state.agrupamento_selecionado, color_param)
-            render_plotly_safe(fig_localidade, use_container_width=True, key="localidade_fem")
+            render_plotly_safe(fig_localidade, width='stretch', key="localidade_fem")
         else:
             st.info("Dados de Localidade do Crime não disponíveis.")
     
@@ -389,7 +389,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
 
             fig_vinculo = plot_vinculo_autor(vinculo_autor, chart_type_vinculo, st.session_state.agrupamento_selecionado,
                                              color_param)
-            render_plotly_safe(fig_vinculo, use_container_width=True, key="vinculo_fem")
+            render_plotly_safe(fig_vinculo, width='stretch', key="vinculo_fem")
         else:
             st.info("Dados de Vínculo do Autor não disponíveis.")
 
@@ -403,7 +403,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
             bo_contra_autor.columns = ['Resposta', 'Quantidade']
 
             fig_bo = plot_bo_contra_autor(bo_contra_autor, chart_type_bo)
-            render_plotly_safe(fig_bo, use_container_width=True, key="bo_fem")
+            render_plotly_safe(fig_bo, width='stretch', key="bo_fem")
         else:
             st.info("Dados de B.O. contra o autor não disponíveis.")
     st.markdown("---")
@@ -418,7 +418,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
 
         fig_idade_vitima = plot_distribuicao_idade(df_idade_vitima, 'idade_vitima', chart_type_idade_vitima, 'Idade da Vítima',
                                                    '#8e24aa')
-        render_plotly_safe(fig_idade_vitima, use_container_width=True, key="idade_vitima_fem")
+        render_plotly_safe(fig_idade_vitima, width='stretch', key="idade_vitima_fem")
 
     with col_graf_fem4:
     
@@ -428,7 +428,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
         df_idade_autor = df_feminicidio_filtrado.dropna(subset=['idade_autor'])
 
         fig_idade_autor = plot_distribuicao_idade(df_idade_autor, 'idade_autor', chart_type_idade_autor, 'Idade do Autor', '#ab47bc')
-        render_plotly_safe(fig_idade_autor, use_container_width=True, key="idade_autor_fem")
+        render_plotly_safe(fig_idade_autor, width='stretch', key="idade_autor_fem")
     st.markdown("---")
 
     col_raca, col_hora = st.columns(2)
@@ -438,7 +438,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
         
         if 'etnia_vitima' in df_feminicidio_filtrado.columns and 'etnia_autor' in df_feminicidio_filtrado.columns:
             fig_racial = plot_perfil_racial(df_feminicidio_filtrado)
-            render_plotly_safe(fig_racial, use_container_width=True, key="grafico_racial")
+            render_plotly_safe(fig_racial, width='stretch', key="grafico_racial")
         else:
             st.warning("Dados de Etnia/Raça não disponíveis.")
 
@@ -448,7 +448,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
         if 'hora_fato' in df_feminicidio_filtrado.columns:
             fig_hora = plot_distribuicao_horaria(df_feminicidio_filtrado)
             if fig_hora:
-                render_plotly_safe(fig_hora, use_container_width=True, key="grafico_hora")
+                render_plotly_safe(fig_hora, width='stretch', key="grafico_hora")
             else:
                 st.info("Não foi possível processar os dados de horário.")
         else:
@@ -466,7 +466,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
         if 'tempo_relacionamento' in df_feminicidio_filtrado.columns:
             st.markdown("##### Tempo de Relacionamento")
             fig_tempo = plot_tempo_relacionamento(df_feminicidio_filtrado)
-            render_plotly_safe(fig_tempo, use_container_width=True, key="fig_tempo_rel")
+            render_plotly_safe(fig_tempo, width='stretch', key="fig_tempo_rel")
         else:
             st.info("Dado de tempo de relacionamento indisponível.")
             
@@ -478,13 +478,13 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
         
         with tab_filho1:
             if 'existencia' in figs_filhos:
-                render_plotly_safe(figs_filhos['existencia'], use_container_width=True, key="fig_filho_exist")
+                render_plotly_safe(figs_filhos['existencia'], width='stretch', key="fig_filho_exist")
             else:
                 st.info("Dado sobre existência de filhos indisponível.")
                 
         with tab_filho2:
             if 'quantidade' in figs_filhos:
-                render_plotly_safe(figs_filhos['quantidade'], use_container_width=True, key="fig_filho_qtd")
+                render_plotly_safe(figs_filhos['quantidade'], width='stretch', key="fig_filho_qtd")
             else:
                 st.info("Dado sobre quantidade de filhos indisponível.")
     
@@ -496,7 +496,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
         
         fig_corr = plot_correlacao_tempo_violencia(df_feminicidio_filtrado)
         if fig_corr:
-            render_plotly_safe(fig_corr, use_container_width=True, key="fig_corr_tempo")
+            render_plotly_safe(fig_corr, width='stretch', key="fig_corr_tempo")
             
     st.markdown("---")
     
@@ -515,7 +515,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
         if not df_feminicidio_filtrado.empty and df_feminicidio_filtrado[
             ['idade_vitima', 'idade_autor']].notna().all(axis=1).any():
             fig_scatter_idade = plot_scatter_idade(df_feminicidio_filtrado)
-            render_plotly_safe(fig_scatter_idade, use_container_width=True, key="scatter_idade_fem")
+            render_plotly_safe(fig_scatter_idade, width='stretch', key="scatter_idade_fem")
         else:
             st.info("Não há dados suficientes para exibir o gráfico de correlação de idades.")
     with col_raiox2:
@@ -529,7 +529,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
         if not df_feminicidio_filtrado.empty and 'passagem_policial' in df_feminicidio_filtrado.columns and 'passagem_por_violencia_domestica' in df_feminicidio_filtrado.columns:
             fig_sankey = plot_sankey_agressor(df_feminicidio_filtrado)
             if fig_sankey:
-                render_plotly_safe(fig_sankey, use_container_width=True, key="sankey_fem")
+                render_plotly_safe(fig_sankey, width='stretch', key="sankey_fem")
             else:
                 st.info("Não há dados para exibir o gráfico de histórico do agressor.")
         else:
@@ -551,7 +551,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
 
     if not df_heatmap_cruzado.empty:
         fig_heatmap_cruzado = plot_heatmap_cruzado(df_heatmap_cruzado)
-        render_plotly_safe(fig_heatmap_cruzado, use_container_width=True, key="heatmap_cruzado_fem")
+        render_plotly_safe(fig_heatmap_cruzado, width='stretch', key="heatmap_cruzado_fem")
     else:
         st.info("Não há dados suficientes (com idade da vítima e do autor) para gerar a análise cruzada.")
 
@@ -576,7 +576,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
                 color_param = coluna_agrupamento
 
             fig_meio = plot_meio_crime(meio_crime, chart_type_meio, st.session_state.agrupamento_selecionado, color_param)
-            render_plotly_safe(fig_meio, use_container_width=True, key="meio_fem")
+            render_plotly_safe(fig_meio, width='stretch', key="meio_fem")
         else:
             st.info("Dados de Meio do Crime não disponíveis.")
 
@@ -589,7 +589,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
             autor_preso.columns = ['Resposta', 'Quantidade']
 
             fig_preso = plot_autor_preso(autor_preso, chart_type_preso)
-            render_plotly_safe(fig_preso, use_container_width=True, key="preso_fem")
+            render_plotly_safe(fig_preso, width='stretch', key="preso_fem")
         else:
             st.info("Dados de Prisão do Autor não disponíveis.")
     st.markdown("---")
@@ -603,7 +603,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
         
         if 'tipo_local' in df_feminicidio_filtrado.columns:
             fig_tipo_local = plot_tipo_local_detalhado(df_feminicidio_filtrado)
-            render_plotly_safe(fig_tipo_local, use_container_width=True, key="fig_tipo_local_bar")
+            render_plotly_safe(fig_tipo_local, width='stretch', key="fig_tipo_local_bar")
         else:
             st.info("Dado de Tipo de Local indisponível.")
 
@@ -624,7 +624,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
 
             fig_autor_bo = plot_passagem_policial(autor_bo, chart_type_autor_bo, "Autor com Registro de B.O.?",
                                                   '#8e24aa')
-            render_plotly_safe(fig_autor_bo, use_container_width=True, key="autor_bo_fem")
+            render_plotly_safe(fig_autor_bo, width='stretch', key="autor_bo_fem")
         else:
             st.info("Dados de Passagem Policial não disponíveis.")
 
@@ -640,7 +640,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
             if not autor_bo_vd.empty:
                 fig_autor_bo_vd = plot_passagem_policial(autor_bo_vd, chart_type_autor_bo_vd,
                                                          "Autor com B.O. por Violência Doméstica?", '#ab47bc')
-                render_plotly_safe(fig_autor_bo_vd, use_container_width=True, key="autor_bo_vd_fem")
+                render_plotly_safe(fig_autor_bo_vd, width='stretch', key="autor_bo_vd_fem")
             else:
                 st.info("Não há dados sobre B.O. por violência doméstica para os filtros selecionados.")
         else:
@@ -707,7 +707,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
 
                 styler = tabela_feminicidio.style.map(colorir_percentual, subset=colunas_para_colorir).format(
                     format_dict)
-                st.dataframe(styler, use_container_width=True, hide_index=True)
+                st.dataframe(styler, width='stretch', hide_index=True)
             else:
                 st.warning("Não há dados para exibir na tabela de feminicídios com os filtros selecionados.")
         else:
@@ -758,7 +758,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
                     colunas_para_colorir.append('Tendência (% ao ano)')
 
                 styler = tabela_total.style.map(colorir_percentual, subset=colunas_para_colorir).format(format_dict)
-                st.dataframe(styler, use_container_width=True, hide_index=True)
+                st.dataframe(styler, width='stretch', hide_index=True)
             else:
                 st.warning("Não há dados para exibir na tabela total.")
         else:
@@ -808,7 +808,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
                 map_df_letalidade = municipios_no_filtro.fillna(0)
 
             fig_mapa_letalidade = plot_mapa_letalidade(map_df_letalidade, geojson_sc)
-            render_plotly_safe(fig_mapa_letalidade, use_container_width=True, key="mapa_letalidade")
+            render_plotly_safe(fig_mapa_letalidade, width='stretch', key="mapa_letalidade")
             st.markdown("---")
 
             st.subheader(f"Ranking do Índice de Letalidade por {st.session_state.agrupamento_selecionado}")
@@ -824,7 +824,7 @@ def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes,
             st.dataframe(df_ranking.style.format(
                 {'Índice de Letalidade': '{:.2f}', 'Total de Eventos (Ocorrências + Feminicídios)': '{:.0f}',
                     'Ocorrências de Violência': '{:.0f}', 'Feminicídios': '{:.0f}'}).background_gradient(
-                cmap='OrRd', subset=['Índice de Letalidade']), use_container_width=True)
+                cmap='OrRd', subset=['Índice de Letalidade']), width='stretch')
   except Exception as e:
         st.error(f"Ocorreu um erro ao renderizar a página de feminicídios: {e}")
         st.info("Tente ajustar os filtros na barra lateral ou recarregue a página.")
