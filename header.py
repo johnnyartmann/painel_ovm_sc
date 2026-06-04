@@ -1,13 +1,16 @@
 import streamlit as st
 
-def render_custom_header():
+def render_custom_header(df_geral_filtrado=None):
     """
-    Renderiza o cabeçalho fixo customizado no topo da página.
+    Renderiza o cabecalho fixo customizado no topo da pagina.
 
     Layout:
-    1. Botões de navegação (usando botões Streamlit nativos)
-    2. Cards de resumo (Filtros atuais) - APENAS EM ABAS DE ANÁLISE
-    3. Expander para detalhes de municípios (quando necessário)
+    1. Botoes de navegacao (usando botoes Streamlit nativos)
+    2. Cards de resumo (Filtros atuais) - APENAS EM ABAS DE ANALISE
+    3. Expander para detalhes de municipios (quando necessario)
+    
+    Args:
+        df_geral_filtrado: DataFrame com os dados filtrados para os cards de resumo.
     """
     
     # Verifica a aba ativa para determinar a visibilidade dos cards
@@ -88,58 +91,7 @@ def render_custom_header():
             min-height: auto;
         }
 
-        /* CONTAINER DOS BOTÕES STREAMLIT */
-        #header-tabs-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            background: linear-gradient(180deg, #4a148c 0%, #6a1b9a 100%);
-            z-index: 999999;
-            box-shadow: none;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            padding: 0.75rem 2rem;
-            display: flex !important;
-            gap: 0.75rem;
-            align-items: center;
-            justify-content: center; /* Centraliza os botões também */
-            min-height: 60px;
-        }
-
-        /* Estiliza os botões Streamlit dentro do container */
-        #header-tabs-container button[data-testid="baseButton-secondary"] {
-            color: rgba(255,255,255,0.9) !important;
-            font-weight: 500;
-            padding: 0.5rem 1rem !important;
-            border-radius: 20px !important; /* Mais arredondado */
-            transition: all 0.2s ease;
-            font-size: 13px !important;
-            white-space: nowrap;
-            border: 1px solid rgba(255,255,255,0.2) !important;
-            background: rgba(255,255,255,0.1) !important;
-            cursor: pointer;
-            box-shadow: none !important;
-            height: 36px !important;
-            min-width: fit-content;
-        }
-
-        #header-tabs-container button[data-testid="baseButton-secondary"]:hover {
-            color: white !important;
-            background: rgba(255,255,255,0.2) !important;
-            border-color: rgba(255,255,255,0.4) !important;
-            transform: translateY(-1px);
-        }
-
-        /* Botão ativo (marcado quando está selecionado) */
-        #header-tabs-container button[data-testid="baseButton-secondary"][kind="primary"],
-        #header-tabs-container button[data-testid="baseButton-secondary"].active {
-            background: white !important;
-            color: #6a1b9a !important; /* Texto roxo no botão ativo branco */
-            font-weight: 700 !important;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
-            border-color: white !important;
-            border-radius: 20px !important;
-        }
+        /* BOTÕES DE NAVEGAÇÃO (renderizados em fluxo normal) */
 
         /* CARDS DE INFO */
         .info-container {
@@ -281,18 +233,6 @@ def render_custom_header():
 
         /* RESPONSIVIDADE */
         @media (max-width: 1200px) {
-            #header-tabs-container {
-                padding: 0.75rem 1.5rem;
-                gap: 0.5rem;
-                min-height: 65px;
-            }
-
-            #header-tabs-container button[data-testid="baseButton-secondary"] {
-                padding: 0.5rem 1rem !important;
-                font-size: 12px !important;
-                height: 36px !important;
-            }
-
             .header-info-row {
                 padding: 0.75rem 1.5rem;
                 gap: 1rem;
@@ -313,18 +253,6 @@ def render_custom_header():
         }
 
         @media (max-width: 900px) {
-            #header-tabs-container {
-                padding: 0.75rem 1rem;
-                gap: 0.3rem;
-                min-height: 60px;
-            }
-
-            #header-tabs-container button[data-testid="baseButton-secondary"] {
-                padding: 0.4rem 0.8rem !important;
-                font-size: 11px !important;
-                height: 34px !important;
-            }
-
             .info-container {
                 gap: 1rem;
             }
@@ -349,18 +277,6 @@ def render_custom_header():
         }
 
         @media (max-width: 600px) {
-            #header-tabs-container {
-                padding: 0.5rem;
-                gap: 0.2rem;
-                min-height: 55px;
-            }
-
-            #header-tabs-container button[data-testid="baseButton-secondary"] {
-                padding: 0.3rem 0.5rem !important;
-                font-size: 10px !important;
-                height: 32px !important;
-            }
-
             .header-info-row {
                 display: none;
             }
@@ -374,21 +290,37 @@ def render_custom_header():
 
     # --- AJUSTE DINÂMICO DE PADDING (Se cards ocultos) ---
     if not show_info_cards:
-        # Reduz o padding do topo quando os cards não são exibidos
-        header_style = header_style.replace("padding-top: 280px !important;", "padding-top: 110px !important;")
-        header_style = header_style.replace("padding-top: 110px !important;", "padding-top: 90px !important;") # Sidebar
-        
-        # Ajustes responsivos para tablets/laptops pequenos
-        header_style = header_style.replace("padding-top: 160px !important;", "padding-top: 110px !important;")
-        header_style = header_style.replace("padding-top: 150px !important;", "padding-top: 110px !important;")
+        # Adiciona CSS de override em vez de substituir strings (evita conflito encadeado)
+        header_style += """
+        <style>
+            .block-container {
+                padding-top: 110px !important;
+            }
+            @media (max-width: 1200px) {
+                .block-container {
+                    padding-top: 100px !important;
+                }
+            }
+            @media (max-width: 900px) {
+                .block-container {
+                    padding-top: 90px !important;
+                }
+            }
+            @media (max-width: 600px) {
+                .block-container {
+                    padding-top: 70px !important;
+                }
+            }
+        </style>
+        """
 
     # --- INJETAR CSS ---
     st.markdown(header_style, unsafe_allow_html=True)
 
     # --- CONSTRUIR INFO CARDS HTML ---
-    def build_info_html():
+    def build_info_html(df_filtrado):
         """Constrói os cards de informação dos filtros"""
-        if 'data_inicial' not in st.session_state or 'df_geral_filtrado' not in st.session_state:
+        if 'data_inicial' not in st.session_state or 'data_final' not in st.session_state or df_filtrado is None or df_filtrado.empty:
             return ""
 
         data_ini = st.session_state.data_inicial
@@ -396,7 +328,7 @@ def render_custom_header():
         dias_totais = (data_fim - data_ini).days
 
         # --- MESORREGIÕES ---
-        mesos_no_filtro = st.session_state.df_geral_filtrado['mesoregiao'].unique()
+        mesos_no_filtro = df_filtrado['mesoregiao'].unique()
         mesos_reais = [m for m in mesos_no_filtro if m != 'Não informado']
         qtd_mesos = len(mesos_reais)
 
@@ -411,7 +343,7 @@ def render_custom_header():
             detalhe_meso = ", ".join(sorted(mesos_reais))
 
         # --- ASSOCIAÇÕES (NOVO) ---
-        assocs_no_filtro = st.session_state.df_geral_filtrado['associacao'].unique()
+        assocs_no_filtro = df_filtrado['associacao'].unique()
         assocs_reais = [a for a in assocs_no_filtro if a != 'Não informado']
         qtd_assocs = len(assocs_reais)
 
@@ -422,14 +354,14 @@ def render_custom_header():
             texto_assoc = assocs_reais[0] if assocs_reais else "Nenhuma"
             detalhe_assoc = None
         elif qtd_assocs <= 3: # Mostra até 3 nomes no card
-            texto_assoc = ", ".join(assocs_reais[:2]) + ("..." if qtd_assocs > 2 else "")
+            texto_assoc = ", ".join(assocs_reais[:3])
             detalhe_assoc = ", ".join(sorted(assocs_reais))
         else:
             texto_assoc = f"{qtd_assocs} Associações"
             detalhe_assoc = ", ".join(sorted(assocs_reais))
 
         # --- MUNICÍPIOS ---
-        muns_selecionados = st.session_state.df_geral_filtrado['municipio'].unique()
+        muns_selecionados = df_filtrado['municipio'].unique()
         qtd_mun = len(muns_selecionados)
 
         if qtd_mun >= 293:
@@ -443,7 +375,7 @@ def render_custom_header():
             mostrar_expander_mun = True # Sempre permitir ver a lista se não for todos
 
         # --- TIPOS DE CRIME (NOVO) ---
-        crimes_selecionados = st.session_state.df_geral_filtrado['fato_comunicado'].unique()
+        crimes_selecionados = df_filtrado['fato_comunicado'].unique()
         qtd_crimes = len(crimes_selecionados)
         # Assumindo que sabemos o total de tipos possíveis ou apenas baseando no count
         # Vamos assumir que se for > 5 é "Vários" ou listar
@@ -486,7 +418,7 @@ def render_custom_header():
 <span>Mesorregiões</span>
 </div>
 <div class="info-card">
-<h5>🏢 Associações de Municípios</h5>
+<h5>🏢 Associações</h5>
 <p>{texto_assoc}</p>
 <span>Selecionadas</span>
 </div>
@@ -508,7 +440,7 @@ def render_custom_header():
 
     # Renderiza os cards de info APENAS se a aba permitir
     if show_info_cards:
-        info_html = build_info_html()
+        info_html = build_info_html(df_geral_filtrado)
         if info_html:
             # Envolvemos em uma classe específica para o CSS de impressão pegar
             # E adicionamos a div de quebra de página logo após
@@ -532,7 +464,7 @@ def render_tab_buttons():
         st.session_state.active_tab = nome_aba
 
     # Container com ID específico para o CSS posicionar
-    st.markdown('<div id="header-tabs-container">', unsafe_allow_html=True)
+    # (wrapper div removido — st.markdown open/close tags não envolvem widgets Streamlit)
 
     # Cria os botões em colunas
     col1, col2, col3, col4 = st.columns(4)
@@ -581,4 +513,4 @@ def render_tab_buttons():
             use_container_width=True
         )
 
-    st.markdown('</div>', unsafe_allow_html=True)
+    # (wrapper div closing tag removido — não funcionava com widgets Streamlit)
