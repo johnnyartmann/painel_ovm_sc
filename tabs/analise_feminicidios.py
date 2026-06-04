@@ -11,6 +11,8 @@ from utils import to_csv, to_excel, calcular_cagr, calcular_tendencia_mensal, co
 
 def criar_tabela_feminicidio_agrupado(df, coluna_agrupamento, nome_agrupamento, df_original_filtrado=None):
     """Cria uma tabela consolidada com dados de feminicídios por [agrupamento]."""
+    df = df.copy()
+    df['ano'] = df['ano'].astype(int)
     df_agrupado = df.groupby([coluna_agrupamento, 'ano'], observed=True).size().reset_index(name='total_crime')
     df_pivot = df_agrupado.pivot_table(index=coluna_agrupamento, columns='ano', values='total_crime', fill_value=0)
 
@@ -86,6 +88,8 @@ def criar_tabela_total_feminicidio(df, df_original_filtrado=None):
     """Cria uma tabela consolidada com o total de feminicídios por ano."""
     if df.empty:
         return pd.DataFrame(columns=['Tipo de Crime', 'total'])
+    df = df.copy()
+    df['ano'] = df['ano'].astype(int)
 
     df_agrupado = df.groupby('ano').size().reset_index(name='total_crime')
     df_pivot = df_agrupado.pivot_table(columns='ano', values='total_crime', fill_value=0)
