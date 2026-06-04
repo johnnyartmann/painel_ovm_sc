@@ -10,6 +10,8 @@ from utils import to_csv, to_excel, calcular_cagr, calcular_tendencia_mensal, co
 
 def criar_tabela_consolidada(df, coluna_agrupamento, nome_agrupamento, df_original_filtrado=None):
     """Cria uma tabela consolidada com dados de crimes por [agrupamento]."""
+    df = df.copy()
+    df['ano'] = df['ano'].astype(int)
     df_agrupado = df.groupby([coluna_agrupamento, 'fato_comunicado', 'ano'], observed=True).size().reset_index(name='total_crime')
     df_pivot = df_agrupado.pivot_table(index=[coluna_agrupamento, 'fato_comunicado'], columns='ano',
                                        values='total_crime', fill_value=0)
@@ -79,6 +81,8 @@ def criar_tabela_consolidada(df, coluna_agrupamento, nome_agrupamento, df_origin
 
 def criar_tabela_total_consolidada(df, df_original_filtrado=None):
     """Cria uma tabela consolidada com o total de crimes por tipo."""
+    df = df.copy()
+    df['ano'] = df['ano'].astype(int)
     df_agrupado = df.groupby(['fato_comunicado', 'ano'], observed=True).size().reset_index(name='total_crime')
     df_pivot = df_agrupado.pivot_table(index='fato_comunicado', columns='ano', values='total_crime', fill_value=0)
 
