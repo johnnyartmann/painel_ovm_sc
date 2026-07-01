@@ -16,7 +16,7 @@ def carregar_css(caminho_arquivo):
 
 
 st.set_page_config(
-    page_title="Observatorio da Violencia Contra a Mulher - SC",
+    page_title="Observatório da Violencia Contra a Mulher - SC",
     page_icon="\U0001f49c",
     layout="wide"
 )
