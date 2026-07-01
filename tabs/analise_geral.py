@@ -213,7 +213,7 @@ def criar_tabela_populacional_agrupada(df_crimes, df_pop, df_regioes, agrupament
 
 def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes, df_calendario, geojson_sc):
   try:
-    st.header("Violencia contra a Mulher em Santa Catarina")
+    st.header("Violência contra a Mulher em Santa Catarina")
     st.markdown(
         "Visão geral dos registros de ocorrências de violência com a mulher no âmbito doméstico (Lei Maria da Penha), no Estado de Santa Catarina.")
 
