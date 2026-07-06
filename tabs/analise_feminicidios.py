@@ -208,7 +208,7 @@ def calcular_indice_letalidade(df_geral_filtrado, df_feminicidio_filtrado, agrup
 
 def render(df_geral_filtrado, df_feminicidio_filtrado, df_populacao, df_regioes, df_calendario, geojson_sc):
   try:
-    st.header("Analise de Feminicidios Consumados")
+    st.header("Análise de Feminicídios Consumados")
 
     # --- (BLOCOS INTELIGENTES DE CONTEXTO MOVIDOS PARA O HEADER) ---
 
