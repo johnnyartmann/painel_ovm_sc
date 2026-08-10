@@ -114,7 +114,7 @@ if not df_geral.empty:
 
         associacoes_disponiveis = sorted(df_geral_filtrado_por_data['associacao'].dropna().unique())
         associacao_selecionado = st.multiselect(
-            "Associacao(oes)",
+            "Associações de Municípios",
             options=associacoes_disponiveis,
             default=associacoes_disponiveis,
             key=f"associacao_selecionado_multi_{_rc}"
