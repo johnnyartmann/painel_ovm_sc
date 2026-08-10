@@ -419,7 +419,7 @@ def render_custom_header(df_geral_filtrado=None):
 <span>Mesorregiões</span>
 </div>
 <div class="info-card">
-<h5>🏢 Associações</h5>
+<h5>🏢 Associações de Municípios</h5>
 <p>{texto_assoc}</p>
 <span>Selecionadas</span>
 </div>
